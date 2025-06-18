@@ -103,16 +103,6 @@ celerybeat.pid
 # SageMath parsed files
 *.sage.py
 
-# Environments
-base_3_11/
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
 # Spyder project settings
 .spyderproject
 .spyproject
@@ -130,3 +120,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+SOOTBLOWER/
