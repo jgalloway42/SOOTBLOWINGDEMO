@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize as opt
+import matplotlib.pyplot as plt # for debugging purposes
 
 def calculate_corrected_hhv(ultimate):
     """
@@ -57,16 +58,17 @@ def temperature_dependent_Cp(species, T):
     Uses simplified polynomial fits or linear models from NASA polynomials (approximated).
     """
     Cp_data = {
-        'CO2': lambda T: 22.26 + 5.981e-2 * T - 3.501e-5 * T*T + 7.469e-9 * T*T*T,
-        'H2O': lambda T: 30.092 + 6.832e-1 * T - 6.793e-4 * T*T + 2.534e-7 * T*T*T,
-        'SO2': lambda T: 24.997 + 5.914e-2 * T - 3.281e-5 * T*T + 6.089e-9 * T*T*T,
-        'CO':  lambda T: 25.567 + 6.096e-2 * T - 4.055e-5 * T*T + 9.104e-9 * T*T*T,
-        'O2':  lambda T: 31.322 + -2.755e-3 * T + 4.551e-6 * T*T - 3.211e-9 * T*T*T,
-        'N2':  lambda T: 28.986 + 1.853e-2 * T - 9.647e-6 * T*T + 1.312e-9 * T*T*T,
-        'NO':  lambda T: 30.752 + 9.630e-3 * T - 1.292e-6 * T*T + 4.800e-10 * T*T*T
+        'CO2': lambda T: 22.26 + 5.981e-2 * T[0] - 3.501e-5 * T[1] + 7.469e-9 * T[2],
+        'H2O': lambda T: 30.092 + 6.832e-1 * T[0] - 6.793e-4 * T[1] + 2.534e-7 * T[2],
+        'SO2': lambda T: 24.997 + 5.914e-2 * T[0] - 3.281e-5 * T[1] + 6.089e-9 * T[2],
+        'CO':  lambda T: 25.567 + 6.096e-2 * T[0] - 4.055e-5 * T[1] + 9.104e-9 * T[2],
+        'O2':  lambda T: 31.322 + -2.755e-3 * T[0] + 4.551e-6 * T[1] - 3.211e-9 * T[2],
+        'N2':  lambda T: 28.986 + 1.853e-2 * T[0] - 9.647e-6 * T[1] + 1.312e-9 * T[2],
+        'NO':  lambda T: 30.752 + 9.630e-3 * T[0] - 1.292e-6 * T[1] + 4.800e-10 * T[2]
     }
+    Tp = [T, T*T, T*T*T]
     if species in Cp_data:
-        return Cp_data[species](T)
+        return Cp_data[species](Tp)
     else:
         return 30.0  # Default fallback value
 
@@ -92,6 +94,13 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
             Cp_avg = temperature_dependent_Cp(sp, T_mid)
             total_energy += n * Cp_avg * (T - T_ref_K)
         return total_energy - HHV_J
+    
+    plt.plot(energy_balance(np.linspace(100, 4000, 100)), np.linspace(100, 4000, 100))  # Debugging plot
+    plt.xlabel('Energy Balance (J)')
+    plt.ylabel('Temperature (K)')
+    plt.title('Energy Balance vs Temperature')
+    plt.grid()
+    plt.show()  # Show the plot for debugging
 
     T_flame = opt.brentq(energy_balance, 500, 4000)  # Solve between 1000–4000 K
     return T_flame
@@ -128,6 +137,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
 
     # calculate corrected HHV
     HHV_btu_per_lb = calculate_corrected_hhv(ultimate) # was hard coded before at 12900
+    print(f'HHV of coal {HHV_btu_per_lb} BTU/LB')
 
     # Air composition (mole fraction)
     air_O2_frac = 0.21
@@ -136,6 +146,10 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
 
     # Convert ultimate analysis to mass fractions
     total = sum(ultimate.values())
+    # check if total mass fraction is 100%
+    if total != 100.0:
+        raise ValueError(f"Total mass fraction must equal 100% value is {total}")
+
     frac = {k: v / total for k, v in ultimate.items()}
     dry_frac = 1.0 - frac.get('Moisture', 0)
 
