@@ -1,4 +1,5 @@
 import numpy as np
+import cantera as ct
 import scipy.optimize as opt
 import matplotlib.pyplot as plt # for debugging purposes
 
@@ -71,6 +72,25 @@ def temperature_dependent_Cp(species, T):
         return Cp_data[species](Tp)
     else:
         return 30.0  # Default fallback value
+    
+# def cantera_temperature_dependent_Cp(products_mol, T, P = 1.4e5):
+#     """
+#     Return the temperature-dependent Cp value (J/mol·K) for a given species at temperature T (K) using Cantera.
+    
+#     Parameters:
+#         species (str): Name of the species.
+#         T (float): Temperature in Kelvin.
+#         P (float): Pressure in Pascals (default: 1.4e5 Pa).
+    
+#     Returns:
+#         float: Cp value in J/mol·K.
+#     """
+#     gas = ct.Solution('gri30.yaml')
+#     T = 1200  # Temperature in Kelvin
+#     P = 101325  # Pressure in Pascals
+#     gas.TPX = T, P, 'CH4:1, O2:2, N2:7.52'  # Example composition (methane, oxygen, nitrogen)
+
+    
 
 def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
     """
@@ -85,7 +105,7 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
     Returns:
         float: Estimated flame temperature in Kelvin.
     """
-    HHV_J = HHV_BTU_per_lb * 1055.06
+    HHV_J = HHV_BTU_per_lb * 1055.06 # convert BTU to Joules
 
     def energy_balance(T):
         total_energy = 0.0
@@ -102,7 +122,7 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
     plt.grid()
     plt.show()  # Show the plot for debugging
 
-    T_flame = opt.brentq(energy_balance, 500, 4000)  # Solve between 1000–4000 K
+    T_flame = opt.brentq(energy_balance, 1000, 4000)  # Solve between 1000–4000 K
     return T_flame
 
 def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=0.9, NOx_eff=0.35):
@@ -178,6 +198,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     mol_O2_actual = mol_air * air_O2_frac
     mol_N2_air = mol_air * air_N2_frac
     mol_H2O_air = mol_air * (0.015 / 0.207)
+    equivalence_ratio = mol_O2_actual / mol_O2_required # used for flame temp
 
     mol_NO = total_mol_N * NOx_eff
     mol_N2_total = mol_N2_air + (total_mol_N - mol_NO)
@@ -194,7 +215,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'NO': mol_NO
     }
 
-    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb * dry_frac)
+    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb)
 
     O2_mole_frac = mol_O2_excess / sum(products_mol.values())
     lb_NO_thermal = estimate_thermal_NO(HHV_btu_per_lb * dry_frac, O2_mole_frac, T_flame_K) * coal_lb_per_hr
