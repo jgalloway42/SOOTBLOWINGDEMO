@@ -1,5 +1,5 @@
 import numpy as np
-import cantera as ct
+import thermo
 import scipy.optimize as opt
 import matplotlib.pyplot as plt # for debugging purposes
 
@@ -67,8 +67,8 @@ def temperature_dependent_Cp(species, T):
         'N2':  lambda T: 28.986 + 1.853e-2 * T[0] - 9.647e-6 * T[1] + 1.312e-9 * T[2],
         'NO':  lambda T: 30.752 + 9.630e-3 * T[0] - 1.292e-6 * T[1] + 4.800e-10 * T[2]
     }
-    Tp = [T, T*T, T*T*T]
     if species in Cp_data:
+        Tp = [T, T*T, T*T*T]
         return Cp_data[species](Tp)
     else:
         return 30.0  # Default fallback value
@@ -90,7 +90,27 @@ def temperature_dependent_Cp(species, T):
 #     P = 101325  # Pressure in Pascals
 #     gas.TPX = T, P, 'CH4:1, O2:2, N2:7.52'  # Example composition (methane, oxygen, nitrogen)
 
+def thermo_temperature_dependent_Cp(species, T, P=1.4e5):
+    """
+    Return an approximate temperature-dependent Cp value (J/mol/K) for a given species at temperature T (K).
+    Using thermo library's Pure Gas Heact Capacity class.
+    """
+    Cp_data = {
+        'CO2': {'CAS': '124-38-9', 'MW': 44.01},
+        'H2O': {'CAS': '7732-18-5', 'MW': 18.02},
+        'SO2': {'CAS': '7446-09-5', 'MW': 64.07},
+        'CO':  {'CAS': '630-08-0', 'MW': 28.01},
+        'O2':  {'CAS': '7782-44-7', 'MW': 32.00},
+        'N2':  {'CAS': '7727-37-9', 'MW': 28.02},
+        'NO':  {'CAS': '10102-43-9', 'MW': 30.01}
+    }
     
+    if species in Cp_data:
+        # print(f"Calculating Cp for {species} at {T} K")
+        CpGas = thermo.heat_capacity.HeatCapacityGas(CASRN=Cp_data[species]['CAS'],
+                                                     MW=Cp_data[species]['MW'],
+                                                     method='POLING_POLY')
+        return CpGas(T) # J/mol/K
 
 def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
     """
@@ -111,18 +131,21 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
         total_energy = 0.0
         for sp, n in products_mol.items():
             T_mid = (T + T_ref_K) / 2
-            Cp_avg = temperature_dependent_Cp(sp, T_mid)
+            Cp_avg = thermo_temperature_dependent_Cp(sp, T_mid)
             total_energy += n * Cp_avg * (T - T_ref_K)
         return total_energy - HHV_J
     
-    plt.plot(energy_balance(np.linspace(100, 4000, 100)), np.linspace(100, 4000, 100))  # Debugging plot
+    
+    tplot = np.linspace(100, 4000, 100)  # Debugging range for temperature
+    energy_values = np.array([energy_balance(T) for T in tplot]) - HHV_J  # Calculate energy balance for debugging
+    plt.plot(energy_values,tplot)  # Debugging plot
     plt.xlabel('Energy Balance (J)')
     plt.ylabel('Temperature (K)')
     plt.title('Energy Balance vs Temperature')
     plt.grid()
     plt.show()  # Show the plot for debugging
 
-    T_flame = opt.brentq(energy_balance, 1000, 4000)  # Solve between 1000–4000 K
+    T_flame = opt.brentq(energy_balance, 100, 4000)  # Solve between 1000–4000 K
     return T_flame
 
 def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=0.9, NOx_eff=0.35):
@@ -215,7 +238,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'NO': mol_NO
     }
 
-    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb)
+    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb * dry_frac)
 
     O2_mole_frac = mol_O2_excess / sum(products_mol.values())
     lb_NO_thermal = estimate_thermal_NO(HHV_btu_per_lb * dry_frac, O2_mole_frac, T_flame_K) * coal_lb_per_hr
