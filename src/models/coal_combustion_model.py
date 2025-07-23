@@ -34,6 +34,60 @@ def calculate_corrected_hhv(ultimate):
 
     return HHV_corrected_BTU_per_lb
 
+import numpy as np
+
+def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_inhg):
+    """
+    Calculates the humidity ratio (mixing ratio) of air.
+
+    Args:
+        temperature_f (float): Air temperature in degrees Fahrenheit.
+        relative_humidity_percent (float): Relative humidity in percent (0-100).
+        pressure_inhg (float): Atmospheric pressure in inches of mercury (inHg).
+
+    Returns:
+        float: Humidity ratio in kg_water/kg_dry_air.
+    """
+
+    # Constants
+    # Conversion factor from inHg to Pascals
+    INHGC_TO_PA_FACTOR = 3386.39 
+    # Specific gas constant for dry air in J/(kg*K)
+    R_DRY_AIR = 287.058 
+    # Ratio of molar masses of water vapor to dry air
+    EPSILON = 0.62198 
+
+    # 1. Convert temperature from Fahrenheit to Kelvin
+    # Formula: K = (F - 32) * 5/9 + 273.15
+    temperature_k = (temperature_f - 32) * 5/9 + 273.15
+
+    # 2. Convert pressure from inHg to Pascals
+    pressure_pa = pressure_inhg * INHGC_TO_PA_FACTOR
+
+    # 3. Calculate Saturation Vapor Pressure (ps) using the Arden Buck Equation (an approximation)
+    # The Arden Buck equation is a common formula for estimating saturation vapor pressure. 
+    # Since the previous response used a simplified formula, let's use a more accurate one
+    # Note: T in this formula should be in Celsius
+    temperature_c = (temperature_f - 32) * 5/9  
+    
+    # Arden Buck Equation (often used in psychrometrics)
+    # This specific version is suitable for temperature in Celsius
+    saturation_vapor_pressure_pa = 611.21 * np.exp((18.678 - (temperature_c / 234.5)) * (temperature_c / (257.14 + temperature_c)))
+
+    # 4. Calculate Actual Vapor Pressure (pa)
+    # Convert relative humidity from percentage to a decimal
+    relative_humidity_ratio = relative_humidity_percent / 100.0  
+    actual_vapor_pressure_pa = relative_humidity_ratio * saturation_vapor_pressure_pa
+
+    # 5. Calculate Humidity Ratio (w)
+    # Formula: w = (epsilon * actual_vapor_pressure) / (total_pressure - actual_vapor_pressure)
+    # where epsilon is the ratio of molar masses of water vapor to dry air (approximately 0.622)
+    humidity_ratio = (EPSILON * actual_vapor_pressure_pa) / (pressure_pa - actual_vapor_pressure_pa)
+
+    return humidity_ratio
+
+
+
 def estimate_thermal_NO(lb_HHV, O2_mole_frac=0.05, T_flame_K=2000):
     """
     Estimate thermal NO formation using an empirical Zeldovich-based model.
@@ -73,23 +127,6 @@ def temperature_dependent_Cp(species, T):
     else:
         return 30.0  # Default fallback value
     
-# def cantera_temperature_dependent_Cp(products_mol, T, P = 1.4e5):
-#     """
-#     Return the temperature-dependent Cp value (J/mol·K) for a given species at temperature T (K) using Cantera.
-    
-#     Parameters:
-#         species (str): Name of the species.
-#         T (float): Temperature in Kelvin.
-#         P (float): Pressure in Pascals (default: 1.4e5 Pa).
-    
-#     Returns:
-#         float: Cp value in J/mol·K.
-#     """
-#     gas = ct.Solution('gri30.yaml')
-#     T = 1200  # Temperature in Kelvin
-#     P = 101325  # Pressure in Pascals
-#     gas.TPX = T, P, 'CH4:1, O2:2, N2:7.52'  # Example composition (methane, oxygen, nitrogen)
-
 def thermo_temperature_dependent_Cp(species, T, P=1.4e5):
     """
     Return an approximate temperature-dependent Cp value (J/mol/K) for a given species at temperature T (K).
@@ -148,21 +185,38 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
     T_flame = opt.brentq(energy_balance, 100, 4000)  # Solve between 1000–4000 K
     return T_flame
 
-def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=0.9, NOx_eff=0.35):
+def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=0.9, NOx_eff=0.35,
+                                   air_temp_F = 75.0, air_RH_pct = 55.0, atm_press_inHg = 30.25):
+
     """
-    Perform combustion analysis using mass flow rate of coal and volumetric air input.
+    Estimate combustion products and emissions based on coal feed rate and combustion air input.
 
     Parameters:
-        ultimate (dict): Ultimate analysis of coal (% by mass: C, H, O, N, S, Moisture).
-        coal_lb_per_hr (float): Coal feed rate in lb/hr.
-        air_scfh (float): Combustion air in standard cubic feet per hour.
-        HHV_btu_per_lb (float): Higher heating value of coal in BTU/lb.
-        CO2_frac (float): Fraction of carbon forming CO2.
-        NOx_eff (float): Fuel-nitrogen to NO conversion efficiency.
+        ultimate (dict): Ultimate analysis of coal as a dictionary with keys:
+            - 'C': Carbon (% by mass)
+            - 'H': Hydrogen (% by mass)
+            - 'O': Oxygen (% by mass)
+            - 'N': Nitrogen (% by mass)
+            - 'S': Sulfur (% by mass)
+            - 'Moisture': Moisture content (% by mass)
+        coal_lb_per_hr (float): Mass flow rate of coal in pounds per hour (lb/hr).
+        air_scfh (float): Volumetric flow rate of combustion air in standard cubic feet per hour (SCFH).
+        CO2_frac (float, optional): Fraction of carbon converted to CO₂ during combustion. Default is 0.9.
+        NOx_eff (float, optional): Efficiency of conversion from fuel-bound nitrogen to NOx. Default is 0.35.
+        air_temp_F (float, optional): Temperature of incoming air in degrees Fahrenheit. Default is 75.0°F.
+        air_RH_pct (float, optional): Relative humidity of incoming air as a percentage. Default is 55.0%.
+        atm_press_inHg (float, optional): Atmospheric pressure in inches of mercury (inHg). Default is 30.25 inHg.
 
     Returns:
-        dict: Combustion products and emissions per hour.
+        dict: Dictionary containing estimated hourly emissions and combustion products, including:
+            - CO₂ emissions (lb/hr)
+            - NOx emissions (lb/hr)
+            - SO₂ emissions (lb/hr)
+            - H₂O from combustion and moisture (lb/hr)
+            - Excess O₂ and N₂ (lb/hr)
+            - Other relevant combustion byproducts
     """
+
     MW = {
         'C': 12.01,
         'H': 1.008,
@@ -180,12 +234,14 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
 
     # calculate corrected HHV
     HHV_btu_per_lb = calculate_corrected_hhv(ultimate) # was hard coded before at 12900
-    print(f'HHV of coal {HHV_btu_per_lb} BTU/LB')
 
-    # Air composition (mole fraction)
+    # Dry Air composition (mole fraction)
     air_O2_frac = 0.21
     air_N2_frac = 0.79
-    air_mol_per_scf = 1.0 / 379.0  # mol/scf at STP
+    air_mol_per_scf = 1.0 / 379.0  # lbmols/scf at STP
+
+    # Humidity ratio
+    air_humidity_ratio = calculate_humidity_ratio(air_temp_F, air_RH_pct, atm_press_inHg)
 
     # Convert ultimate analysis to mass fractions
     total = sum(ultimate.values())
@@ -194,9 +250,9 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         raise ValueError(f"Total mass fraction must equal 100% value is {total}")
 
     frac = {k: v / total for k, v in ultimate.items()}
-    dry_frac = 1.0 - frac.get('Moisture', 0)
+    coal_dry_frac = 1.0 - frac.get('Moisture', 0)
 
-    coal_dry_lb_per_hr = coal_lb_per_hr * dry_frac
+    coal_dry_lb_per_hr = coal_lb_per_hr * coal_dry_frac
 
     # Moles of elements per lb of dry coal
     mol_C = frac['C'] / MW['C']
@@ -217,11 +273,12 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
 
     mol_O2_required = mol_CO2 + mol_CO * 0.5 + total_mol_H / 4 + total_mol_S - total_mol_O / 2
 
-    mol_air = air_scfh * air_mol_per_scf
-    mol_O2_actual = mol_air * air_O2_frac
-    mol_N2_air = mol_air * air_N2_frac
-    mol_H2O_air = mol_air * (0.015 / 0.207)
-    equivalence_ratio = mol_O2_actual / mol_O2_required # used for flame temp
+    mol_wet_air = air_scfh * air_mol_per_scf # approximate based on the very small amout of humidity in normal air
+    mol_dry_air = (1.0 - air_humidity_ratio)* mol_wet_air
+    mol_O2_actual = mol_dry_air * air_O2_frac
+    mol_N2_air = mol_dry_air * air_N2_frac
+    mol_H2O_air = mol_wet_air - mol_dry_air
+    equivalence_ratio = mol_O2_actual / mol_O2_required # could be used for flame temp
 
     mol_NO = total_mol_N * NOx_eff
     mol_N2_total = mol_N2_air + (total_mol_N - mol_NO)
@@ -238,12 +295,36 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'NO': mol_NO
     }
 
-    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb * dry_frac)
+    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb * coal_dry_frac)
 
     O2_mole_frac = mol_O2_excess / sum(products_mol.values())
-    lb_NO_thermal = estimate_thermal_NO(HHV_btu_per_lb * dry_frac, O2_mole_frac, T_flame_K) * coal_lb_per_hr
+    lb_NO_thermal = estimate_thermal_NO(HHV_btu_per_lb * coal_dry_frac, O2_mole_frac, T_flame_K) * coal_lb_per_hr
 
     def moles_to_lbs(mol, mw): return mol * mw / 453.592
+
+    inputs = {
+        'Air (scfh)': air_flow_scfh,
+        'Coal (pph)': coal_lb_per_hr,
+        'CO2 Fraction': CO2_frac,
+        'NOx Conversion Efficiency':NOx_eff,
+        'Air temperature (F)': air_temp_F,
+        'Relative Humidity (%)':air_RH_pct,
+        'Atmospheric Pressure (inHg)':atm_press_inHg,
+    }
+    interim_calcs = {
+        'Coal HHV (Btu/lb)':HHV_btu_per_lb,
+        'Humidity Ratio (h20/dry air by mass)':air_humidity_ratio,
+        'Equivalence Ratio':equivalence_ratio
+    }
+
+    debug = True
+    if debug:
+        print("\n=== Inputs ===\n")
+        for k, v in inputs.items():
+            print(f"{k}: {v:,.2f}")
+        print("\n=== Interim Calculations ===\n")
+        for k, v in interim_calcs.items():
+            print(f"{k}: {v:,.4f}")
 
     results = {
         'CO2 (LB)': moles_to_lbs(mol_CO2, MW['CO2']),
@@ -255,7 +336,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'NO (LB total)': moles_to_lbs(mol_NO, MW['NO']) + lb_NO_thermal,
         'N2 (LB)': moles_to_lbs(mol_N2_total, MW['N2']),
         'O2 (excess %)': moles_to_lbs(mol_O2_excess, MW['O2']),
-        'Heat Released (BTU/hr)': HHV_btu_per_lb * dry_frac * coal_lb_per_hr * (CO2_frac + 0.3 * CO_frac),
+        'Heat Released (BTU/hr)': HHV_btu_per_lb * coal_dry_frac * coal_lb_per_hr * (CO2_frac + 0.3 * CO_frac),
         'Estimated Flame Temp (F)': (T_flame_K - 273.15) * 9/5 + 32 # convert to Farrenheit
     }
 
