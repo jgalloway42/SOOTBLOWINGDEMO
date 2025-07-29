@@ -88,24 +88,68 @@ def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_
 
 
 
-def estimate_thermal_NO(lb_HHV, O2_mole_frac=0.05, T_flame_K=2000):
+def estimate_thermal_NO(O2_mole_frac, N2_mole_frac, T_flame_K, residence_time_s=2.0):
     """
-    Estimate thermal NO formation using an empirical Zeldovich-based model.
-
+    Estimate thermal NO formation using Zeldovich mechanism.
+    
+    The Zeldovich mechanism for thermal NOx:
+    N2 + O ⇌ NO + N
+    N + O2 ⇌ NO + O
+    N + OH ⇌ NO + H
+    
     Parameters:
-        lb_HHV (float): Heat of combustion in BTU per lb of fuel.
         O2_mole_frac (float): Oxygen mole fraction in the flame region.
+        N2_mole_frac (float): Nitrogen mole fraction in the flame region.
         T_flame_K (float): Flame temperature in Kelvin.
+        residence_time_s (float): Residence time in high temperature zone (seconds).
 
     Returns:
-        float: Estimated thermal NO in lb per lb of coal.
+        float: Thermal NO formation rate in mol NO per mol N2 per second.
     """
-    B = 1.6e5
-    C = 38000
-    m = 0.5
-    lb_NO_per_MMBTU = B * (O2_mole_frac ** m) * np.exp(-C / T_flame_K)
-    lb_NO_per_lb_coal = lb_NO_per_MMBTU * (lb_HHV / 1e6)
-    return lb_NO_per_lb_coal
+    # Zeldovich rate constants (simplified Arrhenius forms)
+    # k1f = A1 * exp(-E1/RT) for N2 + O -> NO + N
+    A1 = 1.8e14  # Pre-exponential factor
+    E1 = 76000   # Activation energy (cal/mol)
+    R = 1.987    # Gas constant (cal/mol/K)
+    
+    # Rate constant for the rate-limiting step
+    k1f = A1 * np.exp(-E1 / (R * T_flame_K))
+    
+    # Equilibrium oxygen atom concentration (very simplified)
+    # [O] ∝ sqrt([O2]) * exp(-ΔH_dissociation/RT)
+    O_equilibrium = 1e-6 * np.sqrt(O2_mole_frac) * np.exp(-59000 / (R * T_flame_K))
+    
+    # Thermal NOx formation rate (mol NO/mol N2/s)
+    # Rate ≈ k1f * [N2] * [O] * residence_time
+    thermal_NO_rate = k1f * N2_mole_frac * O_equilibrium * residence_time_s
+    
+    # Limit to reasonable values (thermal NOx is typically small)
+    return min(thermal_NO_rate, 1e-4)  # Max 0.01% conversion per second
+
+def estimate_fuel_NO(fuel_N_moles, NOx_eff, T_flame_K):
+    """
+    Estimate fuel NOx formation with temperature dependence.
+    
+    Parameters:
+        fuel_N_moles (float): Moles of nitrogen in fuel per hour.
+        NOx_eff (float): Base NOx conversion efficiency at reference conditions.
+        T_flame_K (float): Flame temperature in Kelvin.
+    
+    Returns:
+        float: Fuel NOx formation in mol NO per hour.
+    """
+    # Temperature correction factor for fuel NOx
+    # Fuel NOx increases with temperature but less dramatically than thermal NOx
+    T_ref = 2000  # Reference temperature (K)
+    temp_factor = (T_flame_K / T_ref) ** 0.5  # Square root dependence
+    
+    # Adjusted NOx efficiency
+    adjusted_NOx_eff = NOx_eff * temp_factor
+    
+    # Limit to reasonable range
+    adjusted_NOx_eff = min(adjusted_NOx_eff, 0.8)  # Max 80% conversion
+    
+    return fuel_N_moles * adjusted_NOx_eff
 
 def temperature_dependent_Cp(species, T):
     """
@@ -130,7 +174,7 @@ def temperature_dependent_Cp(species, T):
 def thermo_temperature_dependent_Cp(species, T, P=1.4e5):
     """
     Return an approximate temperature-dependent Cp value (J/mol/K) for a given species at temperature T (K).
-    Using thermo library's Pure Gas Heact Capacity class.
+    Using thermo library's Pure Gas Heat Capacity class.
     """
     Cp_data = {
         'CO2': {'CAS': '124-38-9', 'MW': 44.01},
@@ -143,50 +187,94 @@ def thermo_temperature_dependent_Cp(species, T, P=1.4e5):
     }
     
     if species in Cp_data:
-        # print(f"Calculating Cp for {species} at {T} K")
-        CpGas = thermo.heat_capacity.HeatCapacityGas(CASRN=Cp_data[species]['CAS'],
-                                                     MW=Cp_data[species]['MW'],
-                                                     method='POLING_POLY')
-        return CpGas(T) # J/mol/K
+        try:
+            CpGas = thermo.heat_capacity.HeatCapacityGas(CASRN=Cp_data[species]['CAS'],
+                                                         MW=Cp_data[species]['MW'])
+            return CpGas(T) # J/mol/K
+        except:
+            # Fallback to polynomial method if thermo library fails
+            return temperature_dependent_Cp(species, T)
+    else:
+        return 30.0  # Default fallback value
 
-def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, T_ref_K=298.15):
+def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, coal_mass_lb_per_hr=1.0, CO2_frac=0.9, T_ref_K=298.15, debug=False):
     """
     Estimate adiabatic flame temperature using temperature-dependent Cp values.
-    Solves the energy balance: HHV = ∑ ni * ∫Cp(T)dT from T_ref to T_flame.
+    Solves the energy balance: Actual_Heat_Released = ∑ ni * ∫Cp(T)dT from T_ref to T_flame.
 
     Parameters:
-        products_mol (dict): Molar amounts of combustion products.
-        HHV_BTU_per_lb (float): Higher heating value in BTU/lb.
+        products_mol (dict): Molar amounts of combustion products per hour.
+        HHV_BTU_per_lb (float): Higher heating value in BTU/lb (complete combustion basis).
+        coal_mass_lb_per_hr (float): Coal mass flow rate in lb/hr (for proper energy scaling).
+        CO2_frac (float): Fraction of carbon converted to CO2 (affects actual heat release).
         T_ref_K (float): Reference temperature in Kelvin (default: 298.15 K).
+        debug (bool): Enable debugging plots and output.
 
     Returns:
         float: Estimated flame temperature in Kelvin.
     """
-    HHV_J = HHV_BTU_per_lb * 1055.06 # convert BTU to Joules
-
+    # Calculate actual heat released based on combustion efficiency
+    # CO formation releases much less energy than CO2 formation
+    # Heat of formation: C + O2 -> CO2 releases ~393.5 kJ/mol
+    # Heat of formation: C + 0.5*O2 -> CO releases ~110.5 kJ/mol
+    # So CO formation releases about 28% of the energy of CO2 formation
+    
+    CO_frac = 1.0 - CO2_frac
+    combustion_efficiency = CO2_frac + 0.28 * CO_frac  # Weight CO formation at ~28% of CO2 energy
+    
+    # Convert HHV from BTU/lb to J per hour for the given coal flow rate, adjusted for actual combustion
+    actual_heat_released_J_per_hr = HHV_BTU_per_lb * coal_mass_lb_per_hr * 1055.06 * combustion_efficiency
+    
     def energy_balance(T):
-        total_energy = 0.0
-        for sp, n in products_mol.items():
-            T_mid = (T + T_ref_K) / 2
-            Cp_avg = thermo_temperature_dependent_Cp(sp, T_mid)
-            total_energy += n * Cp_avg * (T - T_ref_K)
-        return total_energy - HHV_J
+        """
+        Energy balance equation: Heat input - Heat absorbed by products = 0
+        """
+        total_energy_absorbed = 0.0
+        for species, n_moles_per_hr in products_mol.items():
+            if n_moles_per_hr > 0:  # Only consider species that are actually present
+                # Use average Cp between reference and flame temperature
+                T_mid = (T + T_ref_K) / 2
+                Cp_avg = thermo_temperature_dependent_Cp(species, T_mid)
+                # Energy absorbed by this species
+                energy_absorbed = n_moles_per_hr * Cp_avg * (T - T_ref_K)
+                total_energy_absorbed += energy_absorbed
+        
+        # Return the imbalance (should be zero at equilibrium)
+        return actual_heat_released_J_per_hr - total_energy_absorbed
     
+    if debug:
+        # Debugging: plot energy balance vs temperature
+        T_range = np.linspace(500, 3500, 100)
+        energy_values = [energy_balance(T) for T in T_range]
+        
+        plt.figure(figsize=(10, 6))
+        plt.plot(T_range, energy_values, 'b-', linewidth=2)
+        plt.axhline(y=0, color='r', linestyle='--', alpha=0.7)
+        plt.xlabel('Temperature (K)')
+        plt.ylabel('Energy Balance (J/hr)')
+        plt.title('Energy Balance vs Temperature\n(Zero crossing = Flame Temperature)')
+        plt.grid(True, alpha=0.3)
+        plt.show()
+        
+        print(f"Heat input (adjusted for combustion efficiency): {actual_heat_released_J_per_hr/1055.06 :.2e} Btu/hr")
+        print(f"Combustion efficiency factor: {combustion_efficiency:.3f} (CO2 frac: {CO2_frac:.2f})")
+        print(f"Products composition (mol/hr): {products_mol}")
     
-    tplot = np.linspace(100, 4000, 100)  # Debugging range for temperature
-    energy_values = np.array([energy_balance(T) for T in tplot]) - HHV_J  # Calculate energy balance for debugging
-    plt.plot(energy_values,tplot)  # Debugging plot
-    plt.xlabel('Energy Balance (J)')
-    plt.ylabel('Temperature (K)')
-    plt.title('Energy Balance vs Temperature')
-    plt.grid()
-    plt.show()  # Show the plot for debugging
-
-    T_flame = opt.brentq(energy_balance, 100, 4000)  # Solve between 1000–4000 K
-    return T_flame
+    try:
+        # Find the temperature where energy balance equals zero
+        # Use a reasonable range for combustion temperatures
+        T_flame = opt.brentq(energy_balance, 800, 3500)  # 800-3500 K range
+        return T_flame
+    except ValueError as e:
+        print(f"Warning: Could not solve for flame temperature. Error: {e}")
+        print("Using simplified estimate based on fuel heating value")
+        # Fallback: simplified estimation based on typical combustion temperatures
+        # Higher heating value correlates roughly with flame temperature
+        T_flame_estimate = 1200 + (HHV_BTU_per_lb - 8000) * 0.15  # Empirical relationship
+        return max(T_flame_estimate, 1200)  # Minimum reasonable flame temp
 
 def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=0.9, NOx_eff=0.35,
-                                   air_temp_F = 75.0, air_RH_pct = 55.0, atm_press_inHg = 30.25):
+                                   air_temp_F = 75.0, air_RH_pct = 55.0, atm_press_inHg = 30.25, debug = False):
 
     """
     Estimate combustion products and emissions based on coal feed rate and combustion air input.
@@ -233,7 +321,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     }
 
     # calculate corrected HHV
-    HHV_btu_per_lb = calculate_corrected_hhv(ultimate) # was hard coded before at 12900
+    HHV_btu_per_lb = calculate_corrected_hhv(ultimate)
 
     # Dry Air composition (mole fraction)
     air_O2_frac = 0.21
@@ -273,51 +361,75 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
 
     mol_O2_required = mol_CO2 + mol_CO * 0.5 + total_mol_H / 4 + total_mol_S - total_mol_O / 2
 
-    mol_wet_air = air_scfh * air_mol_per_scf # approximate based on the very small amout of humidity in normal air
-    mol_dry_air = (1.0 - air_humidity_ratio)* mol_wet_air
+    mol_wet_air = air_scfh * air_mol_per_scf # approximate based on the very small amount of humidity in normal air
+    mol_dry_air = (1.0 - air_humidity_ratio) * mol_wet_air
     mol_O2_actual = mol_dry_air * air_O2_frac
     mol_N2_air = mol_dry_air * air_N2_frac
     mol_H2O_air = mol_wet_air - mol_dry_air
     equivalence_ratio = mol_O2_actual / mol_O2_required # could be used for flame temp
 
-    mol_NO = total_mol_N * NOx_eff
-    mol_N2_total = mol_N2_air + (total_mol_N - mol_NO)
     mol_O2_excess = mol_O2_actual - mol_O2_required
     mol_H2O = total_mol_H / 2 + mol_H2O_air
 
+    # Initial products for flame temperature calculation (before NOx correction)
+    products_mol_initial = {
+        'CO2': mol_CO2,
+        'CO': mol_CO,
+        'H2O': mol_H2O,
+        'SO2': total_mol_S,
+        'N2': mol_N2_air + total_mol_N,  # Assume all N goes to N2 initially
+        'O2': mol_O2_excess,
+        'NO': 0  # No NOx assumed for flame temperature calculation
+    }
+
+    # Calculate flame temperature first (NOx formation doesn't significantly affect energy balance)
+    T_flame_K = estimate_flame_temp_Cp_method(products_mol_initial, HHV_btu_per_lb, coal_dry_lb_per_hr, CO2_frac)
+    # Now calculate NOx formation based on the calculated flame temperature
+    total_moles = sum(products_mol_initial.values())
+    O2_mole_frac = mol_O2_excess / total_moles if total_moles > 0 else 0.05
+    N2_mole_frac = (mol_N2_air + total_mol_N) / total_moles if total_moles > 0 else 0.75
+    
+    # Fuel NOx (temperature-dependent)
+    mol_NO_fuel = estimate_fuel_NO(total_mol_N, NOx_eff, T_flame_K)
+    
+    # Thermal NOx (strongly temperature-dependent)
+    thermal_NO_rate = estimate_thermal_NO(O2_mole_frac, N2_mole_frac, T_flame_K)
+    mol_NO_thermal = thermal_NO_rate * (mol_N2_air + total_mol_N)  # mol NO per hour
+    
+    # Total NOx
+    mol_NO_total = mol_NO_fuel + mol_NO_thermal
+    
+    # Update N2 balance (subtract NOx formation)
+    mol_N2_total_corrected = mol_N2_air + (total_mol_N - mol_NO_total)
+    
+    # Final product composition
     products_mol = {
         'CO2': mol_CO2,
         'CO': mol_CO,
         'H2O': mol_H2O,
         'SO2': total_mol_S,
-        'N2': mol_N2_total,
+        'N2': mol_N2_total_corrected,
         'O2': mol_O2_excess,
-        'NO': mol_NO
+        'NO': mol_NO_total
     }
-
-    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb * coal_dry_frac)
-
-    O2_mole_frac = mol_O2_excess / sum(products_mol.values())
-    lb_NO_thermal = estimate_thermal_NO(HHV_btu_per_lb * coal_dry_frac, O2_mole_frac, T_flame_K) * coal_lb_per_hr
 
     def moles_to_lbs(mol, mw): return mol * mw / 453.592
 
     inputs = {
-        'Air (scfh)': air_flow_scfh,
+        'Air (scfh)': air_scfh,
         'Coal (pph)': coal_lb_per_hr,
         'CO2 Fraction': CO2_frac,
-        'NOx Conversion Efficiency':NOx_eff,
+        'NOx Conversion Efficiency': NOx_eff,
         'Air temperature (F)': air_temp_F,
-        'Relative Humidity (%)':air_RH_pct,
-        'Atmospheric Pressure (inHg)':atm_press_inHg,
+        'Relative Humidity (%)': air_RH_pct,
+        'Atmospheric Pressure (inHg)': atm_press_inHg,
     }
     interim_calcs = {
-        'Coal HHV (Btu/lb)':HHV_btu_per_lb,
-        'Humidity Ratio (h2o/dry air by mass)':air_humidity_ratio,
-        'Equivalence Ratio':equivalence_ratio
+        'Coal HHV (Btu/lb)': HHV_btu_per_lb,
+        'Humidity Ratio (h2o/dry air by mass)': air_humidity_ratio,
+        'Equivalence Ratio': equivalence_ratio
     }
 
-    debug = True
     if debug:
         print("\n=== Inputs ===\n")
         for k, v in inputs.items():
@@ -331,16 +443,16 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'CO (LB)': moles_to_lbs(mol_CO, MW['CO']),
         'H2O (LB)': moles_to_lbs(mol_H2O, MW['H2O']),
         'SO2 (LB)': moles_to_lbs(total_mol_S, MW['SO2']),
-        'NO (LB from fuel-N)': moles_to_lbs(mol_NO, MW['NO']),
-        'NO (LB thermal)': lb_NO_thermal,
-        'NO (LB total)': moles_to_lbs(mol_NO, MW['NO']) + lb_NO_thermal,
-        'N2 (LB)': moles_to_lbs(mol_N2_total, MW['N2']),
+        'NO (LB from fuel-N)': moles_to_lbs(mol_NO_fuel, MW['NO']),
+        'NO (LB thermal)': moles_to_lbs(mol_NO_thermal, MW['NO']),
+        'NO (LB total)': moles_to_lbs(mol_NO_total, MW['NO']),
+        'N2 (LB)': moles_to_lbs(mol_N2_total_corrected, MW['N2']),
         'O2 (excess %)': moles_to_lbs(mol_O2_excess, MW['O2']),
         'Heat Released (BTU/hr)': HHV_btu_per_lb * coal_dry_frac * coal_lb_per_hr * (CO2_frac + 0.3 * CO_frac),
-        'Estimated Flame Temp (F)': (T_flame_K - 273.15) * 9/5 + 32 # convert to Farrenheit
+        'Estimated Flame Temp (F)': (T_flame_K - 273.15) * 9/5 + 32 # convert to Fahrenheit
     }
 
-    results['Total Flue Gas (lb/hr)'] = sum(v for k, v in results.items() if k not in ['Heat Released (BTU/hr)', 'Estimated Flame Temp (K)', 'Total Flue Gas (lb/hr)'])
+    results['Total Flue Gas (lb/hr)'] = sum(v for k, v in results.items() if k not in ['Heat Released (BTU/hr)', 'Estimated Flame Temp (F)', 'Total Flue Gas (lb/hr)'])
     return results
 
 # Example usage:
@@ -360,13 +472,34 @@ if __name__ == "__main__":
     coal_rate_lb_hr = 10000    # lb/hr of coal
     air_flow_scfh = 1800000    # standard cubic feet per hour of air
 
-    # Run combustion model
+    print("=== TESTING COMBUSTION EFFICIENCY EFFECT ON FLAME TEMPERATURE ===\n")
+    
+    # Test different CO2 fractions to show effect on flame temperature
+    CO2_fractions = [0.70, 0.80, 0.90, 0.95, 0.99]
+    
+    for co2_frac in CO2_fractions:
+        results = coal_combustion_from_mass_flow(
+            ultimate,
+            coal_lb_per_hr=coal_rate_lb_hr,
+            air_scfh=air_flow_scfh,
+            CO2_frac=co2_frac,
+            NOx_eff=0.35
+        )
+        print(f"CO2 Fraction: {co2_frac:.2f} -> Flame Temp: {results['Estimated Flame Temp (F)']:,.0f}°F, "
+              f"Fuel NOx: {results['NO (LB from fuel-N)']:,.1f} lb/hr, "
+              f"Thermal NOx: {results['NO (LB thermal)']:,.1f} lb/hr")
+    
+    print(2*'\n')
+    print(f"\n=== DETAILED RESULTS FOR GIVEN SIMULATION PARAMETERS ===")
+    
+    # Run combustion model with standard conditions
     results = coal_combustion_from_mass_flow(
         ultimate,
         coal_lb_per_hr=coal_rate_lb_hr,
         air_scfh=air_flow_scfh,
         CO2_frac=0.9,
-        NOx_eff=0.35
+        NOx_eff=0.35,
+        debug=True,
     )
 
     # Output results
