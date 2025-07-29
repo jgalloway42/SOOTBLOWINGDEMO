@@ -313,7 +313,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     }
     interim_calcs = {
         'Coal HHV (Btu/lb)':HHV_btu_per_lb,
-        'Humidity Ratio (h20/dry air by mass)':air_humidity_ratio,
+        'Humidity Ratio (h2o/dry air by mass)':air_humidity_ratio,
         'Equivalence Ratio':equivalence_ratio
     }
 
