@@ -26,24 +26,13 @@
     10. Calculate Combustion efficiency and actual heat-release.
     11. Calculate Flame Temperature.
 * Outputs
-    - Flue gas constiuents by mass fraction
-    - Excess O2 in percent
-    CO2 (LB): 51.04
-CO (LB): 3.61
-H2O (LB): 11.50
-SO2 (LB): 0.43
-NO (LB from fuel-N): 0.22
-NO (LB thermal): 0.00
-NO (LB total): 0.22
-N2 (LB): 229.88
-O2 (excess %): 23.88
-Heat Released (BTU/hr): 104,103,111.74
-Estimated Flame Temp (F): 2,640.17
-Total Flue Gas (lb/hr): 320.80
+    - Flue gas constiuents (raw calculations and then dry ppm/% as would be normally output by a flue gas analyzer)
+    - Heat Release
+    - Flame Temperature
+    - Flue gas flow (lb/hr)
 
-
-### Generation Approximation
-
+### Soot Generation Approximation
+#### Method
 * **Higher CO in flue gas** &rarr; Higher likelihood of incomplete combustion &rarr; Higher likelihood of soot formation. (CO &uarr;, Soot &uarr;)
 
 * **Fuel-Bound NOx** Creation of fuel-rich zones that reduce fuel-bound NOx &rarr; Increased propensity for soot formation if secondary air mixing/burnout is insufficient. (FB NOx efficiency &darr;, Soot &uarr;)
@@ -52,7 +41,13 @@ Total Flue Gas (lb/hr): 320.80
 
 * **Lower Excess Air** &rarr; Increased risk of fuel-rich zones and incomplete combustion &rarr; Higher soot. (Excess Air &uarr;, Soot &uarr;)
 
+#### Implentation Method
 
+### Tube Fouling Approximation
+#### TDB
+
+### Tube Temperature Simulation
+#### TDB
 
 ## Model Derivation
 
