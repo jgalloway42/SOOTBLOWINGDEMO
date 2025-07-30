@@ -84,17 +84,53 @@ def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_
 
     return humidity_ratio
 
-def estimate_fuel_NO(fuel_N_moles, NOx_eff, T_flame_K):
+def calculate_mol_O2_required(
+    mol_CO2: float,
+    mol_CO: float,
+    coal_mol_H: float,
+    coal_mol_S: float,
+    coal_mol_O: float,
+    mol_NO: float = 0.0 # Default to 0.0 if not specified
+) -> float:
     """
-    Estimate fuel NOx formation with temperature dependence.
-    
-    Parameters:
-        fuel_N_moles (float): Moles of nitrogen in fuel per hour.
-        NOx_eff (float): Base NOx conversion efficiency at reference conditions.
-        T_flame_K (float): Flame temperature in Kelvin.
-    
+    Calculates the moles of O2 theoretically required for combustion,
+    including oxygen consumed for the formation of CO and NO.
+
+    Args:
+        mol_CO2 (float): Moles of CO2 produced.
+        mol_CO (float): Moles of CO produced (for incomplete combustion).
+        coal_mol_H (float): Moles of hydrogen (H atoms) in the coal fuel.
+        coal_mol_S (float): Moles of sulfur (S atoms) in the coal fuel.
+        coal_mol_O (float): Moles of oxygen (O atoms) in the coal fuel.
+        mol_NO (float, optional): Moles of nitric oxide (NO) produced.
+                                  Defaults to 0.0 if not specified.
+
     Returns:
-        float: Fuel NOx formation in mol NO per hour.
+        float: The total moles of O2 theoretically required.
+    """
+
+    mol_O2_required = (
+        mol_CO2 +           # O2 for CO2: C + O2 -> CO2
+        mol_CO * 0.5 +      # O2 for CO: C + 0.5 O2 -> CO
+        coal_mol_H / 4 +    # O2 for H2O: H + 0.25 O2 -> 0.5 H2O (per H atom)
+        coal_mol_S +        # O2 for SO2: S + O2 -> SO2
+        mol_NO * 0.5 -      # O2 for NO: 0.5 O2 + N -> NO (per NO molecule)
+        coal_mol_O / 2      # Subtract O2 already present in the coal (per O atom in fuel)
+    )
+
+    return mol_O2_required
+
+def estimate_fuel_NO(fuel_N_moles, NOx_eff, T_flame_K = 2000.0):
+    """
+    Estimate the amount of NO formed from fuel-bound nitrogen, accounting for flame temperature effects.
+
+    Parameters:
+        fuel_N_moles (float): Moles of nitrogen in the fuel per hour.
+        NOx_eff (float): Reference conversion efficiency of fuel nitrogen to NO (fraction, e.g., 0.35).
+        T_flame_K (float, optional): Flame temperature in Kelvin (default: 2000 K).
+
+    Returns:
+        float: Estimated moles of NO formed from fuel nitrogen per hour.
     """
     # Temperature correction factor for fuel NOx
     # Fuel NOx increases with temperature but less dramatically than thermal NOx
@@ -355,16 +391,16 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'NO': 30.01
     }
 
-    # calculate corrected HHV
+    # 1. calculate corrected coal HHV
     HHV_btu_per_lb = calculate_corrected_hhv(ultimate)
+
+    # 2. Calculate Air Humidity ratio
+    air_humidity_ratio = calculate_humidity_ratio(air_temp_F, air_RH_pct, atm_press_inHg)
 
     # Dry Air composition (mole fraction)
     air_O2_frac = 0.21
     air_N2_frac = 0.79
     air_mol_per_scf = 1.0 / 379.0  # lbmols/scf at STP
-
-    # Humidity ratio
-    air_humidity_ratio = calculate_humidity_ratio(air_temp_F, air_RH_pct, atm_press_inHg)
 
     # Convert ultimate analysis to mass fractions
     total = sum(ultimate.values())
@@ -384,18 +420,27 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     mol_S = frac['S'] / MW['S']
     mol_N = frac['N'] / MW['N']
 
-    total_mol_C = mol_C * coal_dry_lb_per_hr
-    total_mol_H = mol_H * coal_dry_lb_per_hr
-    total_mol_O = mol_O * coal_dry_lb_per_hr
-    total_mol_S = mol_S * coal_dry_lb_per_hr
-    total_mol_N = mol_N * coal_dry_lb_per_hr
+    coal_mol_C = mol_C * coal_dry_lb_per_hr
+    coal_mol_H = mol_H * coal_dry_lb_per_hr
+    coal_mol_O = mol_O * coal_dry_lb_per_hr
+    coal_mol_S = mol_S * coal_dry_lb_per_hr
+    coal_mol_N = mol_N * coal_dry_lb_per_hr
 
-    CO_frac = 1 - CO2_frac
-    mol_CO2 = total_mol_C * CO2_frac
-    mol_CO = total_mol_C * CO_frac
+    # 3. Calculate fuel-bound NOx generation
+    prod_mol_NO_fuelbound = estimate_fuel_NO(coal_mol_N, NOx_eff, T_flame_K)
 
-    mol_O2_required = mol_CO2 + mol_CO * 0.5 + total_mol_H / 4 + total_mol_S - total_mol_O / 2
+    # 4. Calculate combustion products assuming no thermal NOx or CO initially
+    CO_frac = 0.0
+    CO2_frac = 1.0
+    prod_mol_CO2 = coal_mol_C
+    prod_mol_CO = 0
 
+    mol_O2_required = calculate_mol_O2_required(mol_CO2=prod_mol_CO2, mol_CO=prod_mol_CO,
+                                            coal_mol_H=coal_mol_H,
+                                            coal_mol_S=coal_mol_S,
+                                            coal_mol_O=coal_mol_O,
+                                            mol_NO=prod_mol_NO_fuelbound) 
+    
     mol_wet_air = air_scfh * air_mol_per_scf # approximate based on the very small amount of humidity in normal air
     mol_dry_air = (1.0 - air_humidity_ratio) * mol_wet_air
     mol_O2_actual = mol_dry_air * air_O2_frac
@@ -403,48 +448,58 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     mol_H2O_air = mol_wet_air - mol_dry_air
     equivalence_ratio = mol_O2_actual / mol_O2_required # could be used for flame temp
 
-    mol_O2_excess = mol_O2_actual - mol_O2_required
-    mol_H2O = total_mol_H / 2 + mol_H2O_air
+    prod_mol_O2 = mol_O2_actual - mol_O2_required
+    if prod_mol_O2 < 0:
+        raise ValueError("Insufficient oxygen in air to support combustion. Increase air flow rate or reduce coal feed rate.")
+    prod_mol_H2O = coal_mol_H / 2 + mol_H2O_air
 
-    # Initial products for flame temperature calculation (before NOx correction)
-    products_mol_initial = {
-        'CO2': mol_CO2,
-        'CO': mol_CO,
-        'H2O': mol_H2O,
-        'SO2': total_mol_S,
-        'N2': mol_N2_air + total_mol_N,  # Assume all N goes to N2 initially
-        'O2': mol_O2_excess,
-        'NO': 0  # No NOx assumed for flame temperature calculation
+    # Initial products
+    products_mol = {
+        'CO2': prod_mol_CO2,
+        'CO': prod_mol_CO,
+        'H2O': prod_mol_H2O,
+        'SO2': coal_mol_S,
+        'N2': mol_N2_air + (coal_mol_N - prod_mol_NO_fuelbound)*0.5,
+        'O2': prod_mol_O2,
+        'NO': prod_mol_NO_fuelbound  # No NOx assumed for flame temperature calculation
     }
 
-    # Calculate flame temperature first (NOx formation doesn't significantly affect energy balance)
-    T_flame_K = estimate_flame_temp_Cp_method(products_mol_initial, HHV_btu_per_lb, coal_dry_lb_per_hr, CO2_frac, debug=debug)
-    # Now calculate NOx formation based on the calculated flame temperature
-    total_moles = sum(products_mol_initial.values())
-    O2_mole_frac = mol_O2_excess / total_moles if total_moles > 0 else 0.05
-    N2_mole_frac = (mol_N2_air + total_mol_N) / total_moles if total_moles > 0 else 0.75
+    # 5. Calculate CO2 Fraction based on excess O2
+    excess_o2_pct = products_mol['O2'] / sum(products_mol.values()) * 100.0
+    CO2_frac = co2_mole_fraction(excess_o2_pct)
+
+    # 6. Update flue gas composition based on CO2 fraction
+    products_mol['CO'] = (1 - CO2_frac) * products_mol['CO2']  # Adjust CO based on CO2 fraction
+    products_mol['CO2'] = CO2_frac * products_mol['CO2']  # Adjust CO2 based on CO2 fraction
     
-    # Fuel NOx (temperature-dependent)
-    mol_NO_fuel = estimate_fuel_NO(total_mol_N, NOx_eff, T_flame_K)
+
+    # Calculate flame temperature first (NOx formation doesn't significantly affect energy balance)
+    T_flame_K = estimate_flame_temp_Cp_method(products_mol, HHV_btu_per_lb, coal_dry_lb_per_hr, CO2_frac, debug=debug)
+    # Now calculate NOx formation based on the calculated flame temperature
+    total_moles = sum(products_mol.values())
+    O2_mole_frac = prod_mol_O2 / total_moles if total_moles > 0 else 0.05
+    N2_mole_frac = (mol_N2_air + coal_mol_N) / total_moles if total_moles > 0 else 0.75
+    
+
     
     # Thermal NOx (strongly temperature-dependent)
     thermal_NO_rate = estimate_thermal_NO(O2_mole_frac, N2_mole_frac, T_flame_K)
-    mol_NO_thermal = thermal_NO_rate * (mol_N2_air + total_mol_N)  # mol NO per hour
+    mol_NO_thermal = thermal_NO_rate * (mol_N2_air + coal_mol_N)  # mol NO per hour
     
     # Total NOx
-    mol_NO_total = mol_NO_fuel + mol_NO_thermal
+    mol_NO_total = prod_mol_NO_fuelbound + mol_NO_thermal
     
     # Update N2 balance (subtract NOx formation)
-    mol_N2_total_corrected = mol_N2_air + (total_mol_N - mol_NO_total)
+    mol_N2_total_corrected = mol_N2_air + (coal_mol_N - mol_NO_total)
     
     # Final product composition
     products_mol = {
-        'CO2': mol_CO2,
-        'CO': mol_CO,
-        'H2O': mol_H2O,
-        'SO2': total_mol_S,
+        'CO2': prod_mol_CO2,
+        'CO': prod_mol_CO,
+        'H2O': prod_mol_H2O,
+        'SO2': coal_mol_S,
         'N2': mol_N2_total_corrected,
-        'O2': mol_O2_excess,
+        'O2': prod_mol_O2,
         'NO': mol_NO_total
     }
 
@@ -487,7 +542,7 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         'CO (lb/hr)': products_lb['CO'],
         'H2O (lb/hr)': products_lb['H2O'],
         'SO2 (lb/hr)': products_lb['SO2'],
-        'NO (lb/hr from fuel-N)': moles_to_lbs(mol_NO_fuel, MW['NO']),
+        'NO (lb/hr from fuel-N)': moles_to_lbs(prod_mol_NO_fuelbound, MW['NO']),
         'NO (lb/hr thermal)': moles_to_lbs(mol_NO_thermal, MW['NO']),
         'NO (lb/hr total)': products_lb['NO'],
         'N2 (lb/hr)': products_lb['N2'],
