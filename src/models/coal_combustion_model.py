@@ -84,7 +84,30 @@ def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_
 
     return humidity_ratio
 
-
+def estimate_fuel_NO(fuel_N_moles, NOx_eff, T_flame_K):
+    """
+    Estimate fuel NOx formation with temperature dependence.
+    
+    Parameters:
+        fuel_N_moles (float): Moles of nitrogen in fuel per hour.
+        NOx_eff (float): Base NOx conversion efficiency at reference conditions.
+        T_flame_K (float): Flame temperature in Kelvin.
+    
+    Returns:
+        float: Fuel NOx formation in mol NO per hour.
+    """
+    # Temperature correction factor for fuel NOx
+    # Fuel NOx increases with temperature but less dramatically than thermal NOx
+    T_ref = 2000  # Reference temperature (K)
+    temp_factor = (T_flame_K / T_ref) ** 0.5  # Square root dependence
+    
+    # Adjusted NOx efficiency
+    adjusted_NOx_eff = NOx_eff * temp_factor
+    
+    # Limit to reasonable range
+    adjusted_NOx_eff = min(adjusted_NOx_eff, 0.8)  # Max 80% conversion
+    
+    return fuel_N_moles * adjusted_NOx_eff
 
 def estimate_thermal_NO(O2_mole_frac, N2_mole_frac, T_flame_K, residence_time_s=2.0):
     """
@@ -124,30 +147,42 @@ def estimate_thermal_NO(O2_mole_frac, N2_mole_frac, T_flame_K, residence_time_s=
     # Limit to reasonable values (thermal NOx is typically small)
     return min(thermal_NO_rate, 1e-4)  # Max 0.01% conversion per second
 
-def estimate_fuel_NO(fuel_N_moles, NOx_eff, T_flame_K):
+def co2_mole_fraction(excess_air_pct):
     """
-    Estimate fuel NOx formation with temperature dependence.
+    Estimate the mole fraction of product carbon as CO2,
+    i.e., moles CO2 / (moles CO2 + moles CO)
+    """
+    # Internal helper for CO/CO2 mole ratio
+    # rough engineering estimation of CO vs CO2 generation
+    def co_co2_ratio(excess_air_pct):
+        if excess_air_pct <= 0:
+            return 0.5
+        elif excess_air_pct < 10:
+            return 0.1 / excess_air_pct
+        elif excess_air_pct < 25:
+            return 0.01 / (excess_air_pct - 5)
+        else:
+            return 0.0005
+
+    r = co_co2_ratio(excess_air_pct)
+    mole_fraction_co2 = 1.0 / (1.0 + r)    # CO2 mole fraction
+    
+    return mole_fraction_co2
+
+def simple_flame_temperature_estimate(HHV_BTU_per_lb):
+    """
+    Estimate flame temperature based on Higher Heating Value (HHV) and coal mass flow rate.
     
     Parameters:
-        fuel_N_moles (float): Moles of nitrogen in fuel per hour.
-        NOx_eff (float): Base NOx conversion efficiency at reference conditions.
-        T_flame_K (float): Flame temperature in Kelvin.
+        HHV_BTU_per_lb (float): Higher heating value in BTU/lb (complete combustion basis).
     
     Returns:
-        float: Fuel NOx formation in mol NO per hour.
+        float: Estimated flame temperature in Kelvin.
     """
-    # Temperature correction factor for fuel NOx
-    # Fuel NOx increases with temperature but less dramatically than thermal NOx
-    T_ref = 2000  # Reference temperature (K)
-    temp_factor = (T_flame_K / T_ref) ** 0.5  # Square root dependence
-    
-    # Adjusted NOx efficiency
-    adjusted_NOx_eff = NOx_eff * temp_factor
-    
-    # Limit to reasonable range
-    adjusted_NOx_eff = min(adjusted_NOx_eff, 0.8)  # Max 80% conversion
-    
-    return fuel_N_moles * adjusted_NOx_eff
+    # Simplified empirical relationship for flame temperature
+    # Higher heating value correlates roughly with flame temperature
+    T_flame_estimate = 1200 + (HHV_BTU_per_lb - 8000) * 0.15  # Empirical relationship
+    return max(T_flame_estimate, 1200)  # Minimum reasonable flame temp
 
 def temperature_dependent_Cp(species, T):
     """
@@ -402,18 +437,21 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
     # Update N2 balance (subtract NOx formation)
     mol_N2_total_corrected = mol_N2_air + (total_mol_N - mol_NO_total)
     
-    # # Final product composition
-    # products_mol = {
-    #     'CO2': mol_CO2,
-    #     'CO': mol_CO,
-    #     'H2O': mol_H2O,
-    #     'SO2': total_mol_S,
-    #     'N2': mol_N2_total_corrected,
-    #     'O2': mol_O2_excess,
-    #     'NO': mol_NO_total
-    # }
+    # Final product composition
+    products_mol = {
+        'CO2': mol_CO2,
+        'CO': mol_CO,
+        'H2O': mol_H2O,
+        'SO2': total_mol_S,
+        'N2': mol_N2_total_corrected,
+        'O2': mol_O2_excess,
+        'NO': mol_NO_total
+    }
 
     def moles_to_lbs(mol, mw): return mol * mw / 453.592
+
+    # convert moles to pounds for final results
+    products_lb = {k:moles_to_lbs(v,MW[k]) for k, v in products_mol.items()}
 
     inputs = {
         'Air (scfh)': air_scfh,
@@ -438,21 +476,27 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, CO2_frac=
         for k, v in interim_calcs.items():
             print(f"{k}: {v:,.4f}")
 
+
+    total_flue_gas_pph = sum(products_lb.values())#sum(v for k, v in results.items() if k not in ['Heat Released (BTU/hr)', 'Estimated Flame Temp (F)', 'Total Flue Gas (lb/hr)'])
+    total_dry_flue_gas_pph = total_flue_gas_pph - products_lb['H2O']  # Dry flue gas excludes water vapor
+    excess_o2_pct = products_lb['O2']/total_dry_flue_gas_pph * 100.0
+
     results = {
-        'CO2 (LB)': moles_to_lbs(mol_CO2, MW['CO2']),
-        'CO (LB)': moles_to_lbs(mol_CO, MW['CO']),
-        'H2O (LB)': moles_to_lbs(mol_H2O, MW['H2O']),
-        'SO2 (LB)': moles_to_lbs(total_mol_S, MW['SO2']),
-        'NO (LB from fuel-N)': moles_to_lbs(mol_NO_fuel, MW['NO']),
-        'NO (LB thermal)': moles_to_lbs(mol_NO_thermal, MW['NO']),
-        'NO (LB total)': moles_to_lbs(mol_NO_total, MW['NO']),
-        'N2 (LB)': moles_to_lbs(mol_N2_total_corrected, MW['N2']),
-        'O2 (excess %)': moles_to_lbs(mol_O2_excess, MW['O2']),
+        'Total Flue Gas (lb/hr)': total_flue_gas_pph,
+        'CO2 (lb/hr)': products_lb['CO2'],
+        'CO (lb/hr)': products_lb['CO'],
+        'H2O (lb/hr)': products_lb['H2O'],
+        'SO2 (lb/hr)': products_lb['SO2'],
+        'NO (lb/hr from fuel-N)': moles_to_lbs(mol_NO_fuel, MW['NO']),
+        'NO (lb/hr thermal)': moles_to_lbs(mol_NO_thermal, MW['NO']),
+        'NO (lb/hr total)': products_lb['NO'],
+        'N2 (lb/hr)': products_lb['N2'],
+        'O2 (lb/hr)': products_lb['O2'],
+        'Dry O2 (% by vol)': excess_o2_pct,
         'Heat Released (BTU/hr)': HHV_btu_per_lb * coal_dry_frac * coal_lb_per_hr * (CO2_frac + 0.3 * CO_frac),
         'Estimated Flame Temp (F)': (T_flame_K - 273.15) * 9/5 + 32 # convert to Fahrenheit
     }
 
-    results['Total Flue Gas (lb/hr)'] = sum(v for k, v in results.items() if k not in ['Heat Released (BTU/hr)', 'Estimated Flame Temp (F)', 'Total Flue Gas (lb/hr)'])
     return results
 
 # Example usage:
