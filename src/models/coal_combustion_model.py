@@ -84,8 +84,6 @@ def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_
 
     return humidity_ratio
 
-import numpy as np
-
 def calculate_ash_free_moles(ultimate_analysis_ar, coal_pounds):
     """
     Converts ultimate analysis from as-received to ash-free basis and calculates
@@ -116,9 +114,6 @@ def calculate_ash_free_moles(ultimate_analysis_ar, coal_pounds):
     # 3. Calculate the weight of ash-free coal in pounds
     coal_ash_free_pounds = coal_pounds * (1 - ultimate_analysis_frac['Ash'])
 
-    # 4. Convert pounds to grams (1 lb = 453.592 grams)
-    coal_ash_free_grams = coal_ash_free_pounds * 453.592
-
     # 5. Define molecular weights (in g/mol or lb/lbmol)
     molecular_weights = {
         'C': 12.011,  #
@@ -131,8 +126,7 @@ def calculate_ash_free_moles(ultimate_analysis_ar, coal_pounds):
     # 6. Calculate the moles of each element (ash-free basis)
     moles_ash_free = {}
     for element, percentage in ash_free_basis.items():
-        element_grams = coal_ash_free_grams * percentage
-        moles_ash_free[element] = element_grams / molecular_weights[element]
+        moles_ash_free[element] = percentage * coal_ash_free_pounds / molecular_weights[element]
 
     return moles_ash_free
 
@@ -144,8 +138,7 @@ def calculate_moles_from_scf_humid_air(scf_air, humidity_ratio,
 
     Args:
         scf_air (float): Standard Cubic Feet (SCF) of humid air.
-        humidity_ratio (float): Humidity ratio (mass of water vapor / mass of dry air).
-                                Units should be consistent (e.g., lbm H2O / lbm dry air).
+        humidity_ratio (float): Humidity ratio (mass of water vapor / mass of air).
         standard_temp_f (float): Standard temperature in Fahrenheit (default: 60°F).
         standard_pressure_psia (float): Standard pressure in psia (default: 14.7 psia).
 
@@ -171,11 +164,12 @@ def calculate_moles_from_scf_humid_air(scf_air, humidity_ratio,
     moles_o2 = moles_dry_air * 0.21  # 21% O2 in dry air
     moles_n2 = moles_dry_air * 0.79  # 79% N2 in dry air
 
-    return {
-        'O2 (moles)': moles_o2,
-        'N2 (moles)': moles_n2,
-        'H2O (moles)': moles_h2o
+    air = {
+        'O2': moles_o2,
+        'N2': moles_n2,
+        'H2O': moles_h2o
     }
+    return air
 
 def calculate_flue_gas_composition(ash_free_wet_coal_composition, wet_air_composition,
                                    co2_factor, product_no_moles):
@@ -533,9 +527,7 @@ def estimate_flame_temp_Cp_method(products_mol, HHV_BTU_per_lb, coal_mass_lb_per
     except ValueError as e:
         print(f"Warning: Could not solve for flame temperature. Error: {e}")
         print("Using simplified estimate based on fuel heating value")
-        # Fallback: simplified estimation based on typical combustion temperatures
-        # Higher heating value correlates roughly with flame temperature
-        T_flame_estimate = 1200 + (HHV_BTU_per_lb - 8000) * 0.15  # Empirical relationship
+        T_flame_estimate = simple_flame_temperature_estimate(HHV_BTU_per_lb * combustion_efficiency)
         return max(T_flame_estimate, 1200)  # Minimum reasonable flame temp
 
 def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, NOx_eff=0.35,
@@ -593,7 +585,6 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, NOx_eff=0
 
     # Air composition (mole fraction)
     air_moles = calculate_moles_from_scf_humid_air(air_scfh, air_humidity_ratio)
-    print(air_scfh, air_moles)
 
     # Convert ultimate analysis to mass fractions
     total = sum(ultimate.values())
@@ -639,6 +630,9 @@ def coal_combustion_from_mass_flow(ultimate, coal_lb_per_hr, air_scfh, NOx_eff=0
     # 9. Update flue gas composition with new total NO formation
     products_mol = calculate_flue_gas_composition(coal_moles, air_moles, CO2_frac,
                                                   prod_mol_NO_fuelbound + prod_mol_NO_thermal)
+    excess_o2_pct = products_mol['O2'] / sum(products_mol.values()) * 100.0
+    CO2_frac = co2_mole_fraction(excess_o2_pct)
+
     
     # 10. Calculate Combustion Effciency and Heat Release
     combustion_efficiency, actual_heat_release = calculate_combustion_efficiency_and_heat_release(coal_dry_ash_free_lb_per_hr,
@@ -715,15 +709,12 @@ if __name__ == "__main__":
         'Ash': 8.0,
         'Moisture': 2.5
     }
-    print(sum(ultimate.values()))
 
     # Input conditions
-    coal_rate_lb_hr = 10_000    # lb/hr of coal
-    air_flow_scfh = 5_000_000_000    # standard cubic feet per hour of air
-    CO2_fraction = 0.9         # percent carbon converted to CO2
+    coal_rate_lb_hr = 10000    # lb/hr of coal
+    air_flow_scfh = 2000000    # standard cubic feet per hour of air
     NOx_efficiency = 0.35      # percent fuel-bound nitrogen
-    
-    print(2*'\n')
+
     print(f"\n=== DETAILED RESULTS FOR GIVEN SIMULATION PARAMETERS ===")
     
     # Run combustion model with standard conditions
@@ -732,7 +723,7 @@ if __name__ == "__main__":
         coal_lb_per_hr=coal_rate_lb_hr,
         air_scfh=air_flow_scfh,
         NOx_eff=NOx_efficiency,
-        debug=False,
+        debug=True,
     )
 
     # Output results
