@@ -84,6 +84,153 @@ def calculate_humidity_ratio(temperature_f, relative_humidity_percent, pressure_
 
     return humidity_ratio
 
+import numpy as np
+
+def calculate_ash_free_moles(ultimate_analysis_ar, coal_pounds):
+    """
+    Converts ultimate analysis from as-received to ash-free basis and calculates
+    the number of moles of each element.
+
+    Args:
+        ultimate_analysis_ar (dict): Dictionary containing ultimate analysis (as-received basis).
+                                     Keys: 'C', 'H', 'O', 'N', 'S', 'Ash', 'Moisture'
+                                     Values: Weight percentage (%).
+        coal_pounds (float): Weight of coal in pounds.
+
+    Returns:
+        dict: A dictionary containing the number of moles of each element on an ash-free basis.
+    """
+
+    # 1. Convert percentages to fractions
+    ultimate_analysis_frac = {key: value / 100 for key, value in ultimate_analysis_ar.items()}
+
+    # 2. Calculate the "dry, ash-free" (DAF) basis
+    daf_factor = 1 - ultimate_analysis_frac['Ash'] - ultimate_analysis_frac['Moisture']
+    if daf_factor <= 0:
+        raise ValueError("Invalid input: (Ash + Moisture) >= 100%. Cannot calculate DAF basis.")
+
+    ash_free_basis = {}
+    for element in ['C', 'H', 'O', 'N', 'S']:
+        ash_free_basis[element] = ultimate_analysis_frac[element] / daf_factor
+
+    # 3. Calculate the weight of ash-free coal in pounds
+    coal_ash_free_pounds = coal_pounds * (1 - ultimate_analysis_frac['Ash'])
+
+    # 4. Convert pounds to grams (1 lb = 453.592 grams)
+    coal_ash_free_grams = coal_ash_free_pounds * 453.592
+
+    # 5. Define molecular weights (in g/mol or lb/lbmol)
+    molecular_weights = {
+        'C': 12.011,  #
+        'H': 1.008, #
+        'O': 15.999, #
+        'N': 14.007, #
+        'S': 32.065 #
+    }
+
+    # 6. Calculate the moles of each element (ash-free basis)
+    moles_ash_free = {}
+    for element, percentage in ash_free_basis.items():
+        element_grams = coal_ash_free_grams * percentage
+        moles_ash_free[element] = element_grams / molecular_weights[element]
+
+    return moles_ash_free
+
+def calculate_flue_gas_composition(coal_composition, wet_air_composition,
+                                   co2_factor, product_no_moles):
+    """
+    Calculate combustion products in flue gas from coal combustion.
+    
+    Parameters:
+    -----------
+    coal_composition : dict
+        Molar composition of coal including moisture
+        Keys: 'C', 'H', 'O', 'N', 'S', 'Moisture' (moles)
+    
+    wet_air_composition : dict
+        Total moles of wet air components per kg coal
+        Keys: 'N2', 'O2', 'H2O' (moles)
+    
+    co2_factor : float
+        Carbon in fuel which is converted to CO2 and the remainder is CO (0.0-1.0)
+    
+    product_no_moles : float
+        Moles of NO in combustion products
+    
+    Returns:
+    --------
+    dict : Combustion products composition (moles)
+        Keys: 'CO2', 'CO', 'H2O', 'N2', 'SO2', 'NO', 'O2'
+    """
+    
+    # Extract coal composition
+    C_coal = coal_composition.get('C', 0)
+    H_coal = coal_composition.get('H', 0)
+    O_coal = coal_composition.get('O', 0)
+    N_coal = coal_composition.get('N', 0)
+    S_coal = coal_composition.get('S', 0)
+    H2O_coal = coal_composition.get('Moisture', 0)
+    
+    # Extract air composition (total moles per kg coal)
+    N2_air = wet_air_composition.get('N2', 0)
+    O2_air = wet_air_composition.get('O2', 0)
+    H2O_air = wet_air_composition.get('H2O', 0)
+    
+    # Calculate stoichiometric oxygen requirement
+    # Combustion reactions:
+    # C + O2 -> CO2 or C + 0.5*O2 -> CO
+    # H2 + 0.5*O2 -> H2O (assuming H exists as H2)
+    # S + O2 -> SO2
+    
+    # Carbon splits between CO2 and CO based on given ratio
+    CO2_moles = co2_factor * C_coal
+    CO_moles = (1 - co2_factor) * C_coal
+    
+    # Oxygen requirement for carbon combustion
+    O2_for_C = CO2_moles + 0.5 * CO_moles
+    
+    # Oxygen requirement for hydrogen combustion (H -> H2O)
+    O2_for_H = 0.25 * H_coal  # Assuming H exists as H2, so H2 + 0.5*O2 -> H2O
+    
+    # Oxygen requirement for sulfur combustion
+    O2_for_S = S_coal
+    
+    # Total oxygen available from air and coal
+    O2_available = O2_air + 0.5 * O_coal
+    
+    # Calculate combustion products
+    products = {}
+    
+    # CO2 from carbon combustion
+    products['CO2'] = CO2_moles
+    
+    # CO from incomplete combustion
+    products['CO'] = CO_moles
+    
+    # H2O from hydrogen combustion + moisture from coal + moisture from air
+    products['H2O'] = 0.5 * H_coal + H2O_coal + H2O_air
+    
+    # SO2 from sulfur combustion
+    products['SO2'] = S_coal
+    
+    # NO (given as input)
+    products['NO'] = product_no_moles
+    
+    # N2 from air + nitrogen from coal - nitrogen consumed for NO formation
+    # Assuming NO formation: N2 + 0.5*O2 -> 2*NO
+    N2_consumed_for_NO = 0.5 * product_no_moles
+    products['N2'] = N2_air + 0.5 * N_coal - N2_consumed_for_NO
+    
+    # Excess O2 (unconsumed oxygen)
+    O2_consumed = O2_for_C + O2_for_H + O2_for_S + 0.5 * product_no_moles  # Include O2 for NO formation
+    products['O2'] = O2_available - O2_consumed
+    
+    # Remove any negative values (shouldn't occur with proper inputs)
+    for key in products:
+        products[key] = max(0, products[key])
+    
+    return products
+
 def calculate_mol_O2_required(
     mol_CO2: float,
     mol_CO: float,
@@ -566,6 +713,7 @@ if __name__ == "__main__":
         'Ash': 8.0,
         'Moisture': 2.5
     }
+    print(sum(ultimate.values()))
 
     # Input conditions
     coal_rate_lb_hr = 10000    # lb/hr of coal
