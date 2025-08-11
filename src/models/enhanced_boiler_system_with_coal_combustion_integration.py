@@ -1178,7 +1178,8 @@ if __name__ == "__main__":
     print(f"🎉 • ML dataset generation for optimization               🎉")
     print(f"🎉 • Individual segment fouling control                   🎉")
     print(f"🎉 • Comprehensive performance analysis                   🎉")
-    print(f"🎉" + " " * 96 + "🎉")    def analyze_soot_blowing_effectiveness(self):
+    print(f"🎉" + " " * 96 + "🎉")    
+    def analyze_soot_blowing_effectiveness(self):
         """Analyze the effectiveness of soot blowing on different sections."""
         print(f"\n" + "=" * 100)
         print("SOOT BLOWING EFFECTIVENESS ANALYSIS")
@@ -1531,13 +1532,14 @@ if __name__ == "__main__":
     print(f"🎉 ENHANCED 100 MMBtu/hr BOILER WITH SOOT BLOWING SIMULATION 🎉")
     print(f"🎉 Individual segment fouling control and cleaning simulation 🎉")
     print(f"🎉 All advanced features tested and validated successfully!  🎉")
-    print(f"🎉" + " " * 96 + "🎉")def demonstrate_configurable_parameters():
-    """Demonstrate the configurable parameter functionality."""
-    print("=" * 100)
-    print("CONFIGURABLE PARAMETER DEMONSTRATION")
-    print("100 MMBtu/hr Boiler with Variable Operating Conditions")
-    print("=" * 100)
-    
+    print(f"🎉" + " " * 96 + "🎉")
+    def demonstrate_configurable_parameters():
+        """Demonstrate the configurable parameter functionality."""
+        print("=" * 100)
+        print("CONFIGURABLE PARAMETER DEMONSTRATION")
+        print("100 MMBtu/hr Boiler with Variable Operating Conditions")
+        print("=" * 100)
+        
     # Test different operating conditions
     test_cases = [
         {
@@ -1680,7 +1682,8 @@ def demonstrate_thermo_integration():
     analyzer = SystemAnalyzer(boiler)
     visualizer = Visualizer(boiler)
     
-    print(f"✓ System initialized with {len(boiler.sections)}    def _calculate_temperature_drops(self, segment_position: float) -> Dict[str, float]:
+    print(f"✓ System initialized with {len(boiler.sections)}")  
+    def _calculate_temperature_drops(self, segment_position: float) -> Dict[str, float]:
         """Calculate realistic temperature drops for different section types."""
         if self.section_type == 'radiant':
             return {
@@ -1975,36 +1978,33 @@ class EnhancedCompleteBoilerSystem:
             section_type='convective'
         )
         
-        return sections_id=1.75/12, tube_length=18, tube_count=120,
-            base_fouling_gas=0.002, base_fouling_water=0.0005,
-            section_type='superheater'
-        )
-        
-        # Primary Economizer
-        sections['economizer_primary'] = EnhancedBoilerTubeSection(
-            name="Primary Economizer",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=22, tube_count=250,
-            base_fouling_gas=0.003, base_fouling_water=0.002,
-            section_type='economizer'
-        )
-        
-        # Secondary Economizer
-        sections['economizer_secondary'] = EnhancedBoilerTubeSection(
-            name="Secondary Economizer",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=20, tube_count=200,
-            base_fouling_gas=0.004, base_fouling_water=0.0025,
-            section_type='economizer'
-        )
-        
-        # Air Heater
-        sections['air_heater'] = EnhancedBoilerTubeSection(
-            name="Air Heater",
-            tube_od=1.75/12, tube_id=1.5/12, tube_length=15, tube_count=500,
-            base_fouling_gas=0.006, base_fouling_water=0.001,
-            section_type='convective'
-        )
-        
         return sections
+       
+        # # Primary Economizer
+        # sections['economizer_primary'] = EnhancedBoilerTubeSection(
+        #     name="Primary Economizer",
+        #     tube_od=2.0/12, tube_id=1.75/12, tube_length=22, tube_count=250,
+        #     base_fouling_gas=0.003, base_fouling_water=0.002,
+        #     section_type='economizer'
+        # )
+        
+        # # Secondary Economizer
+        # sections['economizer_secondary'] = EnhancedBoilerTubeSection(
+        #     name="Secondary Economizer",
+        #     tube_od=2.0/12, tube_id=1.75/12, tube_length=20, tube_count=200,
+        #     base_fouling_gas=0.004, base_fouling_water=0.0025,
+        #     section_type='economizer'
+        # )
+        
+        # # Air Heater
+        # sections['air_heater'] = EnhancedBoilerTubeSection(
+        #     name="Air Heater",
+        #     tube_od=1.75/12, tube_id=1.5/12, tube_length=15, tube_count=500,
+        #     base_fouling_gas=0.006, base_fouling_water=0.001,
+        #     section_type='convective'
+        # )
+        
+        # return sections
     
     def calculate_attemperator_flow(self, steam_temp_before: float, 
                                   target_temp: float, steam_flow: float) -> float:

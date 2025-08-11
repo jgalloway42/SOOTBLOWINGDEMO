@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pulverized Coal Boiler Flow Diagram</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: white;
+        }
+        
+        .diagram-container {
+            width: 1200px;
+            height: 800px;
+            margin: 0 auto;
+            position: relative;
+            background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #333;
+        }
+        
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 20px;
+            border: 2px solid #333;
+            border-radius: 8px;
+        }
+        
+        .component {
+            position: absolute;
+            border: 2px solid;
+            border-radius: 6px;
+            padding: 6px;
+            text-align: center;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        /* Component colors */
+        .coal-input { background: #FFE5E5; border-color: #FF4444; color: #CC0000; }
+        .air-input { background: #E5F3FF; border-color: #4488FF; color: #0066CC; }
+        .furnace { background: #FFF3E0; border-color: #FF8800; color: #E65100; }
+        .generating { background: #E8F5E8; border-color: #4CAF50; color: #2E7D32; }
+        .superheater { background: #E3F2FD; border-color: #2196F3; color: #1565C0; }
+        .economizer { background: #F3E5F5; border-color: #9C27B0; color: #7B1FA2; }
+        .air-heater { background: #FFF8E1; border-color: #FFC107; color: #F57F17; }
+        .steam-output { background: #E1F5FE; border-color: #00BCD4; color: #006064; }
+        .stack { background: #FFEBEE; border-color: #F44336; color: #C62828; }
+        .feedwater { background: #E8F5E8; border-color: #4CAF50; color: #1B5E20; }
+        .attemperator { background: #F0F4C3; border-color: #827717; color: #827717; }
+        
+        /* Flow arrows */
+        .arrow {
+            position: absolute;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px white;
+        }
+        
+        .gas-arrow { color: #FF5722; }
+        .steam-arrow { color: #2196F3; }
+        .water-arrow { color: #009688; }
+        
+        /* Temperature labels */
+        .temp-label {
+            position: absolute;
+            background: rgba(255,255,255,0.95);
+            border: 1px solid #666;
+            border-radius: 3px;
+            padding: 2px 4px;
+            font-size: 9px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        /* Fouling boxes */
+        .fouling {
+            position: absolute;
+            background: rgba(255,193,7,0.9);
+            border: 1px solid #FF8F00;
+            border-radius: 3px;
+            padding: 2px 3px;
+            font-size: 8px;
+            color: #E65100;
+            font-weight: bold;
+        }
+        
+        /* Legend */
+        .legend {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            border: 2px solid #333;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 9px;
+            width: 160px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 2px 0;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 12px;
+            border-radius: 2px;
+            margin-right: 6px;
+            border: 1px solid #333;
+        }
+        
+        /* Flow lines */
+        .flow-line {
+            position: absolute;
+            border-top: 3px solid;
+        }
+        
+        .gas-line { border-color: #FF5722; }
+        .steam-line { border-color: #2196F3; }
+        .water-line { border-color: #009688; }
+    </style>
+</head>
+<body>
+    <div class="diagram-container">
+        <!-- Title -->
+        <div class="title">Pulverized Coal, 100 MMBtu/hr, Subcritical Boiler<br>Soot Blowing Simulation</div>
+        
+        <!-- Legend -->
+        <div class="legend">
+            <div style="font-weight: bold; text-align: center; margin-bottom: 5px;">Components</div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFE5E5; border-color: #FF4444;"></div>
+                <span>Coal/Combustion</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFF3E0; border-color: #FF8800;"></div>
+                <span>Furnace</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #E8F5E8; border-color: #4CAF50;"></div>
+                <span>Generating Bank</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #E3F2FD; border-color: #2196F3;"></div>
+                <span>Superheaters</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #F3E5F5; border-color: #9C27B0;"></div>
+                <span>Economizers</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #FFF8E1; border-color: #FFC107;"></div>
+                <span>Air Heater</span>
+            </div>
+        </div>
+        
+        <!-- Coal Input -->
+        <div class="component coal-input" style="left: 30px; top: 150px; width: 100px; height: 60px;">
+            Coal Input<br>
+            8,500 lb/hr<br>
+            C: 72%, H: 5%<br>
+            O: 10%, N: 1.5%<br>
+            S: 1.2%, Ash: 8.5%
+        </div>
+        
+        <!-- Combustion Air -->
+        <div class="component air-input" style="left: 30px; top: 230px; width: 100px; height: 45px;">
+            Combustion Air<br>
+            900,000 SCFH<br>
+            75°F, 55% RH<br>
+            NOx Eff: 35%
+        </div>
+        
+        <!-- Furnace -->
+        <div class="component furnace" style="left: 180px; top: 150px; width: 120px; height: 70px;">
+            Furnace Walls<br>
+            80 tubes × 35 ft<br>
+            OD: 2.5", ID: 2.0"<br>
+            Flow: 23,800 lb/hr<br>
+            Radiant Heat
+        </div>
+        
+        <!-- Generating Bank -->
+        <div class="component generating" style="left: 340px; top: 150px; width: 120px; height: 70px;">
+            Generating Bank<br>
+            160 tubes × 20 ft<br>
+            OD: 2.0", ID: 1.75"<br>
+            Flow: 68,000 lb/hr<br>
+            Steam Generation
+        </div>
+        
+        <!-- Primary Superheater -->
+        <div class="component superheater" style="left: 500px; top: 150px; width: 120px; height: 70px;">
+            Primary SH<br>
+            60 tubes × 15 ft<br>
+            OD: 2.0", ID: 1.75"<br>
+            Flow: 65,960 lb/hr<br>
+            Initial Superheat
+        </div>
+        
+        <!-- Secondary Superheater -->
+        <div class="component superheater" style="left: 660px; top: 150px; width: 120px; height: 70px;">
+            Secondary SH<br>
+            50 tubes × 15 ft<br>
+            OD: 2.0", ID: 1.75"<br>
+            Flow: 65,960 lb/hr<br>
+            Final Superheat
+        </div>
+        
+        <!-- Steam Output -->
+        <div class="component steam-output" style="left: 820px; top: 150px; width: 100px; height: 50px;">
+            Final Steam<br>
+            65,960 lb/hr<br>
+            700°F, 600 psia<br>
+            SH: 168°F
+        </div>
+        
+        <!-- Primary Economizer -->
+        <div class="component economizer" style="left: 660px; top: 350px; width: 120px; height: 70px;">
+            Primary Econ<br>
+            100 tubes × 18 ft<br>
+            OD: 2.0", ID: 1.75"<br>
+            Flow: 68,000 lb/hr<br>
+            Feedwater Heating
+        </div>
+        
+        <!-- Secondary Economizer -->
+        <div class="component economizer" style="left: 500px; top: 350px; width: 120px; height: 70px;">
+            Secondary Econ<br>
+            80 tubes × 15 ft<br>
+            OD: 2.0", ID: 1.75"<br>
+            Flow: 68,000 lb/hr<br>
+            Final Heating
+        </div>
+        
+        <!-- Air Heater -->
+        <div class="component air-heater" style="left: 340px; top: 350px; width: 120px; height: 70px;">
+            Air Heater<br>
+            200 tubes × 12 ft<br>
+            OD: 1.75", ID: 1.5"<br>
+            Air: 56,000 lb/hr<br>
+            Heat Recovery
+        </div>
+        
+        <!-- Stack -->
+        <div class="component stack" style="left: 180px; top: 350px; width: 100px; height: 50px;">
+            Stack Gas<br>
+            84,000 lb/hr<br>
+            300°F<br>
+            To Atmosphere
+        </div>
+        
+        <!-- Feedwater -->
+        <div class="component feedwater" style="left: 340px; top: 480px; width: 100px; height: 45px;">
+            Feedwater<br>
+            68,000 lb/hr<br>
+            220°F, 650 psia<br>
+            From Deaerator
+        </div>
+        
+        <!-- Attemperator -->
+        <div class="component attemperator" style="left: 580px; top: 100px; width: 80px; height: 35px;">
+            Attemperator<br>
+            Variable Flow<br>
+            Temp Control
+        </div>
+        
+        <!-- Temperature Labels -->
+        <div class="temp-label" style="left: 310px; top: 130px;">Gas: 3000°F</div>
+        <div class="temp-label" style="left: 310px; top: 240px;">Water: 350°F</div>
+        
+        <div class="temp-label" style="left: 470px; top: 130px;">Gas: 2200°F</div>
+        <div class="temp-label" style="left: 470px; top: 240px;">Steam: 400°F</div>
+        
+        <div class="temp-label" style="left: 630px; top: 130px;">Gas: 1800°F</div>
+        <div class="temp-label" style="left: 630px; top: 240px;">Steam: 532°F</div>
+        
+        <div class="temp-label" style="left: 790px; top: 130px;">Gas: 1500°F</div>
+        <div class="temp-label" style="left: 790px; top: 240px;">Steam: 700°F</div>
+        
+        <div class="temp-label" style="left: 630px; top: 440px;">Gas: 1200°F</div>
+        <div class="temp-label" style="left: 630px; top: 460px;">Water: 280°F</div>
+        
+        <div class="temp-label" style="left: 470px; top: 440px;">Gas: 800°F</div>
+        <div class="temp-label" style="left: 470px; top: 460px;">Water: 220°F</div>
+        
+        <div class="temp-label" style="left: 310px; top: 440px;">Gas: 400°F</div>
+        <div class="temp-label" style="left: 310px; top: 460px;">Air: 80°F</div>
+        
+        <!-- Fouling Factors -->
+        <div class="fouling" style="left: 185px; top: 230px;">Gas: 0.0005<br>H2O: 0.0003</div>
+        <div class="fouling" style="left: 345px; top: 230px;">Gas: 0.002<br>H2O: 0.001</div>
+        <div class="fouling" style="left: 505px; top: 230px;">Gas: 0.0015<br>H2O: 0.0005</div>
+        <div class="fouling" style="left: 665px; top: 230px;">Gas: 0.002<br>H2O: 0.0005</div>
+        <div class="fouling" style="left: 665px; top: 330px;">Gas: 0.003<br>H2O: 0.002</div>
+        <div class="fouling" style="left: 505px; top: 330px;">Gas: 0.004<br>H2O: 0.0025</div>
+        <div class="fouling" style="left: 345px; top: 330px;">Gas: 0.006<br>H2O: 0.001</div>
+        
+        <!-- Flow Arrows - Gas Path -->
+        <div class="arrow gas-arrow" style="left: 320px; top: 180px;">→</div>
+        <div class="arrow gas-arrow" style="left: 480px; top: 180px;">→</div>
+        <div class="arrow gas-arrow" style="left: 640px; top: 180px;">→</div>
+        <div class="arrow gas-arrow" style="left: 800px; top: 180px;">→</div>
+        
+        <!-- Gas flow down and back -->
+        <div class="arrow gas-arrow" style="left: 840px; top: 250px; transform: rotate(90deg);">→</div>
+        <div class="arrow gas-arrow" style="left: 800px; top: 380px; transform: rotate(180deg);">→</div>
+        <div class="arrow gas-arrow" style="left: 640px; top: 380px; transform: rotate(180deg);">→</div>
+        <div class="arrow gas-arrow" style="left: 480px; top: 380px; transform: rotate(180deg);">→</div>
+        <div class="arrow gas-arrow" style="left: 320px; top: 380px; transform: rotate(180deg);">→</div>
+        
+        <!-- Steam/Water Arrows -->
+        <div class="arrow steam-arrow" style="left: 400px; top: 450px; transform: rotate(45deg);">→</div>
+        <div class="arrow steam-arrow" style="left: 300px; top: 250px; transform: rotate(90deg);">→</div>
+        <div class="arrow steam-arrow" style="left: 460px; top: 250px; transform: rotate(90deg);">→</div>
+        <div class="arrow steam-arrow" style="left: 620px; top: 250px; transform: rotate(90deg);">→</div>
+        <div class="arrow steam-arrow" style="left: 780px; top: 250px; transform: rotate(90deg);">→</div>
+        
+        <!-- Combustion Results Box -->
+        <div class="component coal-input" style="left: 30px; top: 300px; width: 130px; height: 80px;">
+            Combustion Results<br>
+            Heat: 100 MMBtu/hr<br>
+            Efficiency: 85%<br>
+            Flame: 3200°F<br>
+            NOx: 85 lb/hr<br>
+            CO₂: 21,250 lb/hr<br>
+            Excess O₂: 3.5%
+        </div>
+        
+        <!-- Soot Production Box -->
+        <div class="component coal-input" style="left: 30px; top: 400px; width: 130px; height: 70px;">
+            Soot Production<br>
+            Rate: 8.5 lb/hr<br>
+            Size: 2.1 μm<br>
+            Carbon: 87%<br>
+            Deposition: 0.65<br>
+            Linked to NOx & O₂
+        </div>
+        
+        <!-- System Performance -->
+        <div class="component steam-output" style="left: 950px; top: 300px; width: 130px; height: 80px;">
+            System Performance<br>
+            Efficiency: 82.5%<br>
+            Steam: 65,960 lb/hr<br>
+            Heat Absorbed:<br>
+            82.5 MMBtu/hr<br>
+            Stack Loss: 17.5%
+        </div>
+    </div>
+    
+    <script>
+        // Function to capture the diagram as PNG
+        function captureAsPNG() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const diagram = document.querySelector('.diagram-container');
+            
+            canvas.width = 1200;
+            canvas.height = 800;
+            
+            // This would need html2canvas library in a real implementation
+            // For now, this is just the structure
+            console.log('Diagram ready for PNG capture');
+        }
+        
+        // Auto-capture when page loads
+        window.addEventListener('load', captureAsPNG);
+    </script>
+</body>
+</html>
