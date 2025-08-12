@@ -1,0 +1,154 @@
+MASSACHUSETTS BOILER ANNUAL OPERATION DATASET
+==================================================
+
+Generation Date: 2025-08-12 11:33:12.904524
+Simulation Period: 2024-01-01 00:00:00 to 2024-12-31 00:00:00
+Total Records: 8760
+Total Columns: 120
+
+OPERATIONAL PARAMETERS:
+- Load Range: 45-100% of maximum capacity
+- Recording Interval: Every 1 hours
+- Maximum Capacity: 100 MMBtu/hr
+- Location: Massachusetts, USA
+
+SOOT BLOWING SCHEDULE:
+- furnace_walls: Every 8 hours (3.0x per day)
+- generating_bank: Every 12 hours (2.0x per day)
+- superheater_primary: Every 16 hours (1.5x per day)
+- superheater_secondary: Every 24 hours (1.0x per day)
+- economizer_primary: Every 48 hours (0.5x per day)
+- economizer_secondary: Every 72 hours (0.3x per day)
+- air_heater: Every 168 hours (0.1x per day)
+
+COAL QUALITY PROFILES:
+- high_quality: Premium bituminous coal
+  Carbon: 75.0%, Sulfur: 0.8%, Ash: 7.0%
+- medium_quality: Standard bituminous coal
+  Carbon: 72.0%, Sulfur: 1.2%, Ash: 8.5%
+- low_quality: Sub-bituminous coal
+  Carbon: 68.0%, Sulfur: 2.0%, Ash: 12.0%
+- waste_coal: Waste/refuse coal blend
+  Carbon: 65.0%, Sulfur: 2.5%, Ash: 15.0%
+
+DATASET COLUMNS (120 total):
+  1. timestamp
+  2. year
+  3. month
+  4. day
+  5. hour
+  6. day_of_year
+  7. season
+  8. load_factor
+  9. ambient_temp_F
+ 10. ambient_humidity_pct
+ 11. coal_quality
+ 12. coal_rate_lb_hr
+ 13. air_flow_scfh
+ 14. fuel_input_btu_hr
+ 15. flue_gas_flow_lb_hr
+ 16. coal_carbon_pct
+ 17. coal_volatile_matter_pct
+ 18. coal_sulfur_pct
+ 19. coal_ash_pct
+ 20. coal_moisture_pct
+ 21. coal_heating_value_btu_lb
+ 22. thermal_nox_lb_hr
+ 23. fuel_nox_lb_hr
+ 24. total_nox_lb_hr
+ 25. excess_o2_pct
+ 26. combustion_efficiency
+ 27. flame_temp_F
+ 28. system_efficiency
+ 29. final_steam_temp_F
+ 30. stack_temp_F
+ 31. total_heat_absorbed_btu_hr
+ 32. steam_production_lb_hr
+ 33. attemperator_flow_lb_hr
+ 34. solution_converged
+ 35. soot_blowing_active
+ 36. sections_cleaned_count
+ 37. furnace_walls_fouling_gas_avg
+ 38. furnace_walls_fouling_gas_max
+ 39. furnace_walls_fouling_gas_min
+ 40. furnace_walls_fouling_water_avg
+ 41. furnace_walls_fouling_water_max
+ 42. furnace_walls_hours_since_cleaning
+ 43. generating_bank_fouling_gas_avg
+ 44. generating_bank_fouling_gas_max
+ 45. generating_bank_fouling_gas_min
+ 46. generating_bank_fouling_water_avg
+ 47. generating_bank_fouling_water_max
+ 48. generating_bank_hours_since_cleaning
+ 49. superheater_primary_fouling_gas_avg
+ 50. superheater_primary_fouling_gas_max
+ 51. superheater_primary_fouling_gas_min
+ 52. superheater_primary_fouling_water_avg
+ 53. superheater_primary_fouling_water_max
+ 54. superheater_primary_hours_since_cleaning
+ 55. superheater_secondary_fouling_gas_avg
+ 56. superheater_secondary_fouling_gas_max
+ 57. superheater_secondary_fouling_gas_min
+ 58. superheater_secondary_fouling_water_avg
+ 59. superheater_secondary_fouling_water_max
+ 60. superheater_secondary_hours_since_cleaning
+ 61. economizer_primary_fouling_gas_avg
+ 62. economizer_primary_fouling_gas_max
+ 63. economizer_primary_fouling_gas_min
+ 64. economizer_primary_fouling_water_avg
+ 65. economizer_primary_fouling_water_max
+ 66. economizer_primary_hours_since_cleaning
+ 67. economizer_secondary_fouling_gas_avg
+ 68. economizer_secondary_fouling_gas_max
+ 69. economizer_secondary_fouling_gas_min
+ 70. economizer_secondary_fouling_water_avg
+ 71. economizer_secondary_fouling_water_max
+ 72. economizer_secondary_hours_since_cleaning
+ 73. air_heater_fouling_gas_avg
+ 74. air_heater_fouling_gas_max
+ 75. air_heater_fouling_gas_min
+ 76. air_heater_fouling_water_avg
+ 77. air_heater_fouling_water_max
+ 78. air_heater_hours_since_cleaning
+ 79. furnace_walls_gas_temp_in_F
+ 80. furnace_walls_gas_temp_out_F
+ 81. furnace_walls_water_temp_in_F
+ 82. furnace_walls_water_temp_out_F
+ 83. furnace_walls_heat_transfer_btu_hr
+ 84. furnace_walls_overall_U_avg
+ 85. generating_bank_gas_temp_in_F
+ 86. generating_bank_gas_temp_out_F
+ 87. generating_bank_water_temp_in_F
+ 88. generating_bank_water_temp_out_F
+ 89. generating_bank_heat_transfer_btu_hr
+ 90. generating_bank_overall_U_avg
+ 91. superheater_primary_gas_temp_in_F
+ 92. superheater_primary_gas_temp_out_F
+ 93. superheater_primary_water_temp_in_F
+ 94. superheater_primary_water_temp_out_F
+ 95. superheater_primary_heat_transfer_btu_hr
+ 96. superheater_primary_overall_U_avg
+ 97. superheater_secondary_gas_temp_in_F
+ 98. superheater_secondary_gas_temp_out_F
+ 99. superheater_secondary_water_temp_in_F
+100. superheater_secondary_water_temp_out_F
+101. superheater_secondary_heat_transfer_btu_hr
+102. superheater_secondary_overall_U_avg
+103. economizer_primary_gas_temp_in_F
+104. economizer_primary_gas_temp_out_F
+105. economizer_primary_water_temp_in_F
+106. economizer_primary_water_temp_out_F
+107. economizer_primary_heat_transfer_btu_hr
+108. economizer_primary_overall_U_avg
+109. economizer_secondary_gas_temp_in_F
+110. economizer_secondary_gas_temp_out_F
+111. economizer_secondary_water_temp_in_F
+112. economizer_secondary_water_temp_out_F
+113. economizer_secondary_heat_transfer_btu_hr
+114. economizer_secondary_overall_U_avg
+115. air_heater_gas_temp_in_F
+116. air_heater_gas_temp_out_F
+117. air_heater_water_temp_in_F
+118. air_heater_water_temp_out_F
+119. air_heater_heat_transfer_btu_hr
+120. air_heater_overall_U_avg
