@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
 """
-CORRECTED: Complete Enhanced Boiler System Model
+Complete Enhanced Boiler System Model
 
-This module contains the complete boiler system model with CORRECTED fouling
-distribution that follows realistic soot deposition physics.
-
-MAJOR CORRECTION: Base fouling factors now reflect real boiler physics:
-- Furnace sections: HIGHEST base fouling (hot soot formation)
-- Superheater sections: HIGH base fouling (still hot, sticky particles)  
-- Economizer sections: MODERATE base fouling (cooler conditions)
-- Air heater: LOWEST base fouling (cold gas, minimal sticking)
+This module contains the complete boiler system model with thermo library integration,
+configurable operating conditions, and comprehensive heat transfer analysis.
 
 Classes:
-    EnhancedCompleteBoilerSystem: Main boiler system model with corrected fouling
+    EnhancedCompleteBoilerSystem: Main boiler system model
 
 Dependencies:
     - thermodynamic_properties: Property calculations
@@ -20,7 +14,7 @@ Dependencies:
     - typing: Type hints
 
 Author: Enhanced Boiler Modeling System
-Version: 5.1 - CORRECTED Soot Deposition Physics
+Version: 5.0 - Complete Integration
 """
 
 from typing import Dict, Optional, Union
@@ -30,12 +24,12 @@ from heat_transfer_calculations import EnhancedBoilerTubeSection
 
 
 class EnhancedCompleteBoilerSystem:
-    """Complete enhanced boiler system model with CORRECTED realistic fouling distribution."""
+    """Complete enhanced boiler system model with thermo library integration."""
     
     def __init__(self, fuel_input: float = 100e6, flue_gas_mass_flow: float = 84000,
                  furnace_exit_temp: float = 3000, base_fouling_multiplier: float = 1.0):
         """
-        Initialize enhanced boiler system with CORRECTED fouling parameters.
+        Initialize enhanced boiler system with configurable parameters.
         
         Args:
             fuel_input: Fuel heat input rate (Btu/hr)
@@ -51,8 +45,8 @@ class EnhancedCompleteBoilerSystem:
         self.furnace_exit_temp = furnace_exit_temp  # °F
         self.base_fouling_multiplier = base_fouling_multiplier
         
-        # Initialize sections with CORRECTED fouling
-        self.sections = self._initialize_enhanced_sections_corrected()
+        # Initialize sections with configurable fouling
+        self.sections = self._initialize_enhanced_sections()
         
         # Other system operating parameters
         self.combustion_efficiency = 0.85
@@ -71,110 +65,6 @@ class EnhancedCompleteBoilerSystem:
         # Results storage
         self.section_results: Dict[str, Dict] = {}
         self.system_performance: Dict[str, float] = {}
-    
-    def _initialize_enhanced_sections_corrected(self) -> Dict[str, EnhancedBoilerTubeSection]:
-        """Initialize all boiler heat transfer sections with CORRECTED realistic fouling factors."""
-        sections = {}
-        
-        # CORRECTED: Base fouling factors following realistic soot deposition physics
-        # Higher values = MORE fouling (opposite of original incorrect pattern)
-        corrected_base_fouling_factors = {
-            'furnace_walls': {'gas': 0.008, 'water': 0.003},      # HIGHEST - soot formation zone
-            'generating_bank': {'gas': 0.006, 'water': 0.0025},   # HIGH - still very hot
-            'superheater_primary': {'gas': 0.005, 'water': 0.002}, # HIGH - hot sticky particles
-            'superheater_secondary': {'gas': 0.004, 'water': 0.0015}, # MODERATE-HIGH - cooling
-            'economizer_primary': {'gas': 0.002, 'water': 0.001},  # MODERATE - much cooler
-            'economizer_secondary': {'gas': 0.0015, 'water': 0.0008}, # LOW-MODERATE - cool gas
-            'air_heater': {'gas': 0.0008, 'water': 0.0005}        # LOWEST - cold gas, minimal sticking
-        }
-        
-        print(f"\n🔥 INITIALIZING SECTIONS WITH CORRECTED FOULING FACTORS:")
-        print(f"{'Section':<20} {'Gas Fouling':<12} {'Description':<30}")
-        print("-" * 65)
-        
-        # Furnace Wall Tubes (scaled down by ~5x from 500 MMBtu design)
-        fouling = corrected_base_fouling_factors['furnace_walls']
-        sections['furnace_walls'] = EnhancedBoilerTubeSection(
-            name="Furnace Wall Tubes",
-            tube_od=2.5/12, tube_id=2.0/12, tube_length=35, tube_count=80,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='radiant'
-        )
-        print(f"{'furnace_walls':<20} {fouling['gas']:<12.5f} {'HIGHEST - soot formation zone':<30}")
-        
-        # Generating Bank (scaled down)
-        fouling = corrected_base_fouling_factors['generating_bank']
-        sections['generating_bank'] = EnhancedBoilerTubeSection(
-            name="Generating Bank", 
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=20, tube_count=160,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='convective'
-        )
-        print(f"{'generating_bank':<20} {fouling['gas']:<12.5f} {'HIGH - still very hot':<30}")
-        
-        # Primary Superheater (scaled down)
-        fouling = corrected_base_fouling_factors['superheater_primary']
-        sections['superheater_primary'] = EnhancedBoilerTubeSection(
-            name="Primary Superheater",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=60,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='superheater'
-        )
-        print(f"{'superheater_primary':<20} {fouling['gas']:<12.5f} {'HIGH - hot sticky particles':<30}")
-        
-        # Secondary Superheater (scaled down)
-        fouling = corrected_base_fouling_factors['superheater_secondary']
-        sections['superheater_secondary'] = EnhancedBoilerTubeSection(
-            name="Secondary Superheater",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=50,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='superheater'
-        )
-        print(f"{'superheater_secondary':<20} {fouling['gas']:<12.5f} {'MODERATE-HIGH - cooling':<30}")
-        
-        # Primary Economizer (scaled down)
-        fouling = corrected_base_fouling_factors['economizer_primary']
-        sections['economizer_primary'] = EnhancedBoilerTubeSection(
-            name="Primary Economizer",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=18, tube_count=100,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='economizer'
-        )
-        print(f"{'economizer_primary':<20} {fouling['gas']:<12.5f} {'MODERATE - much cooler':<30}")
-        
-        # Secondary Economizer (scaled down)
-        fouling = corrected_base_fouling_factors['economizer_secondary']
-        sections['economizer_secondary'] = EnhancedBoilerTubeSection(
-            name="Secondary Economizer",
-            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=80,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='economizer'
-        )
-        print(f"{'economizer_secondary':<20} {fouling['gas']:<12.5f} {'LOW-MODERATE - cool gas':<30}")
-        
-        # Air Heater (scaled down)
-        fouling = corrected_base_fouling_factors['air_heater']
-        sections['air_heater'] = EnhancedBoilerTubeSection(
-            name="Air Heater",
-            tube_od=1.75/12, tube_id=1.5/12, tube_length=12, tube_count=200,
-            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
-            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
-            section_type='convective'
-        )
-        print(f"{'air_heater':<20} {fouling['gas']:<12.5f} {'LOWEST - cold gas minimal sticking':<30}")
-        
-        print(f"\n✅ CORRECTED FOULING PHYSICS IMPLEMENTED:")
-        print(f"   • Furnace: {corrected_base_fouling_factors['furnace_walls']['gas']:.5f} (HIGHEST)")
-        print(f"   • Air Heater: {corrected_base_fouling_factors['air_heater']['gas']:.5f} (LOWEST)")
-        print(f"   • Ratio: {corrected_base_fouling_factors['furnace_walls']['gas']/corrected_base_fouling_factors['air_heater']['gas']:.1f}:1 (REALISTIC)")
-        
-        return sections
     
     def update_operating_conditions(self, fuel_input: Optional[float] = None,
                                   flue_gas_mass_flow: Optional[float] = None,
@@ -196,8 +86,95 @@ class EnhancedCompleteBoilerSystem:
         
         # Reinitialize sections if fouling factors changed
         if fouling_changed:
-            self.sections = self._initialize_enhanced_sections_corrected()
-            print(f"✓ Sections reinitialized with CORRECTED fouling multiplier: {self.base_fouling_multiplier}")
+            self.sections = self._initialize_enhanced_sections()
+            print(f"✓ Sections reinitialized with fouling multiplier: {self.base_fouling_multiplier}")
+    
+    def _initialize_enhanced_sections(self) -> Dict[str, EnhancedBoilerTubeSection]:
+        """Initialize all boiler heat transfer sections sized for 100 MMBtu/hr with configurable fouling."""
+        sections = {}
+        
+        # Base fouling factors (before multiplier)
+        base_fouling_factors = {
+            'furnace_walls': {'gas': 0.0005, 'water': 0.0003},
+            'generating_bank': {'gas': 0.002, 'water': 0.001},
+            'superheater_primary': {'gas': 0.0015, 'water': 0.0005},
+            'superheater_secondary': {'gas': 0.002, 'water': 0.0005},
+            'economizer_primary': {'gas': 0.003, 'water': 0.002},
+            'economizer_secondary': {'gas': 0.004, 'water': 0.0025},
+            'air_heater': {'gas': 0.006, 'water': 0.001}
+        }
+        
+        # Furnace Wall Tubes (scaled down by ~5x from 500 MMBtu design)
+        fouling = base_fouling_factors['furnace_walls']
+        sections['furnace_walls'] = EnhancedBoilerTubeSection(
+            name="Furnace Wall Tubes",
+            tube_od=2.5/12, tube_id=2.0/12, tube_length=35, tube_count=80,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='radiant'
+        )
+        
+        # Generating Bank (scaled down)
+        fouling = base_fouling_factors['generating_bank']
+        sections['generating_bank'] = EnhancedBoilerTubeSection(
+            name="Generating Bank", 
+            tube_od=2.0/12, tube_id=1.75/12, tube_length=20, tube_count=160,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='convective'
+        )
+        
+        # Primary Superheater (scaled down)
+        fouling = base_fouling_factors['superheater_primary']
+        sections['superheater_primary'] = EnhancedBoilerTubeSection(
+            name="Primary Superheater",
+            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=60,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='superheater'
+        )
+        
+        # Secondary Superheater (scaled down)
+        fouling = base_fouling_factors['superheater_secondary']
+        sections['superheater_secondary'] = EnhancedBoilerTubeSection(
+            name="Secondary Superheater",
+            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=50,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='superheater'
+        )
+        
+        # Primary Economizer (scaled down)
+        fouling = base_fouling_factors['economizer_primary']
+        sections['economizer_primary'] = EnhancedBoilerTubeSection(
+            name="Primary Economizer",
+            tube_od=2.0/12, tube_id=1.75/12, tube_length=18, tube_count=100,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='economizer'
+        )
+        
+        # Secondary Economizer (scaled down)
+        fouling = base_fouling_factors['economizer_secondary']
+        sections['economizer_secondary'] = EnhancedBoilerTubeSection(
+            name="Secondary Economizer",
+            tube_od=2.0/12, tube_id=1.75/12, tube_length=15, tube_count=80,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='economizer'
+        )
+        
+        # Air Heater (scaled down)
+        fouling = base_fouling_factors['air_heater']
+        sections['air_heater'] = EnhancedBoilerTubeSection(
+            name="Air Heater",
+            tube_od=1.75/12, tube_id=1.5/12, tube_length=12, tube_count=200,
+            base_fouling_gas=fouling['gas'] * self.base_fouling_multiplier,
+            base_fouling_water=fouling['water'] * self.base_fouling_multiplier,
+            section_type='convective'
+        )
+        
+        return sections
     
     def calculate_attemperator_flow(self, steam_temp_before: float, 
                                   target_temp: float, steam_flow: float) -> float:
@@ -220,8 +197,8 @@ class EnhancedCompleteBoilerSystem:
         return max(0, min(spray_flow, steam_flow * 0.1))  # Limit to 10%
     
     def solve_enhanced_system(self, max_iterations: int = 15, tolerance: float = 3.0) -> Dict:
-        """Solve the complete enhanced boiler system with CORRECTED fouling patterns."""
-        print(f"Solving enhanced boiler system with CORRECTED fouling physics...")
+        """Solve the complete enhanced boiler system with iterative convergence."""
+        print(f"Solving enhanced boiler system with thermo library...")
         print(f"Target: Stack {self.stack_temp_target}°F, Steam {self.final_steam_temp_target}°F")
         
         # Flow distribution (scaled for 100 MMBtu/hr)
@@ -284,7 +261,6 @@ class EnhancedCompleteBoilerSystem:
                     }
                     
                     print(f"    Q: {summary['total_heat_transfer']/1e6:.1f} MMBtu/hr, Gas out: {current_gas_temp:.0f}°F")
-                    print(f"    Max Gas Fouling: {summary['max_gas_fouling']:.5f}")
                     
                 except Exception as e:
                     print(f"    Error: {e}")
@@ -321,7 +297,7 @@ class EnhancedCompleteBoilerSystem:
             print(f"  Stack: {stack_temp:.1f}°F, Steam: {final_steam_temp:.1f}°F, Efficiency: {efficiency:.1%}")
             
             if stack_error < tolerance and temp_error < tolerance:
-                print(f"\n✓ Converged after {iteration + 1} iterations with CORRECTED fouling")
+                print(f"\n✓ Converged after {iteration + 1} iterations")
                 break
             
             # Update temperatures with damping
@@ -346,12 +322,5 @@ class EnhancedCompleteBoilerSystem:
             'steam_production': main_steam_flow + self.attemperator_flow,
             'iterations_to_converge': iteration + 1
         }
-        
-        print(f"\n🔥 CORRECTED FOULING IMPACT SUMMARY:")
-        furnace_fouling = self.section_results['furnace_walls']['summary']['max_gas_fouling']
-        air_heater_fouling = self.section_results['air_heater']['summary']['max_gas_fouling']
-        print(f"   • Furnace max fouling: {furnace_fouling:.5f}")
-        print(f"   • Air heater max fouling: {air_heater_fouling:.5f}")
-        print(f"   • Realistic ratio: {furnace_fouling/air_heater_fouling:.1f}:1")
         
         return self.section_results

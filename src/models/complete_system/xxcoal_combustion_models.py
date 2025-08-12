@@ -1,19 +1,14 @@
 #!/usr/bin/env python3
 """
-CORRECTED: Coal Combustion and Soot Production Models
+Coal Combustion and Soot Production Models
 
 This module contains the coal combustion analysis and soot production modeling
-classes with CORRECTED fouling distribution patterns that match real boiler physics.
-
-MAJOR CORRECTION: Fouling integration now follows realistic physics:
-- Maximum fouling in hot furnace zones (soot formation)
-- Decreasing fouling toward stack (cooling gas, less adhesion)
+classes for the enhanced boiler system.
 
 Classes:
     CoalCombustionModel: Simplified coal combustion analysis
     SootProductionModel: Soot formation and deposition modeling
     SootProductionData: Dataclass for soot characteristics
-    CombustionFoulingIntegrator: CORRECTED fouling integration
 
 Dependencies:
     - numpy: Numerical calculations
@@ -21,7 +16,7 @@ Dependencies:
     - typing: Type hints
 
 Author: Enhanced Boiler Modeling System
-Version: 5.1 - CORRECTED Soot Deposition Physics
+Version: 5.0 - Coal Combustion Integration
 """
 
 import numpy as np
@@ -45,7 +40,27 @@ class CoalCombustionModel:
     
     def __init__(self, ultimate_analysis, coal_lb_per_hr, air_scfh, NOx_eff=0.35,
                  air_temp_F=75.0, air_RH_pct=55.0, atm_press_inHg=30.25):
-        """Initialize coal combustion model."""
+        """
+        Initialize coal combustion model.
+        
+        Parameters:
+        -----------
+        ultimate_analysis : dict
+            Ultimate analysis of coal with keys: 'C', 'H', 'O', 'N', 'S', 'Ash', 'Moisture'
+            Values are weight percentages.
+        coal_lb_per_hr : float
+            Mass flow rate of coal in pounds per hour.
+        air_scfh : float
+            Volumetric flow rate of combustion air in standard cubic feet per hour.
+        NOx_eff : float, optional
+            Efficiency of conversion from fuel-bound nitrogen to NOx (default: 0.35).
+        air_temp_F : float, optional
+            Temperature of incoming air in degrees Fahrenheit (default: 75.0).
+        air_RH_pct : float, optional
+            Relative humidity of incoming air as percentage (default: 55.0).
+        atm_press_inHg : float, optional
+            Atmospheric pressure in inches of mercury (default: 30.25).
+        """
         self._ultimate_analysis = ultimate_analysis.copy()
         self._coal_lb_per_hr = coal_lb_per_hr
         self._air_scfh = air_scfh
@@ -129,7 +144,16 @@ class SootProductionModel:
         
     def calculate_soot_production(self, combustion_model: CoalCombustionModel,
                                 coal_properties: Dict) -> SootProductionData:
-        """Calculate soot production based on combustion conditions."""
+        """
+        Calculate soot production based on combustion conditions.
+        
+        Args:
+            combustion_model: Calculated combustion model
+            coal_properties: Coal characteristics affecting soot formation
+            
+        Returns:
+            SootProductionData: Comprehensive soot formation data
+        """
         # Get combustion parameters
         thermal_nox = combustion_model.NO_thermal_lb_per_hr
         fuel_nox = combustion_model.NO_fuel_lb_per_hr
@@ -259,69 +283,55 @@ class SootProductionModel:
 
 
 class CombustionFoulingIntegrator:
-    """CORRECTED: Integrate combustion conditions with realistic fouling buildup patterns."""
+    """Integrate combustion conditions with fouling buildup in boiler sections."""
     
     def __init__(self):
-        """Initialize the CORRECTED combustion-fouling integrator."""
+        """Initialize the combustion-fouling integrator."""
         self.soot_model = SootProductionModel()
         
-        # CORRECTED: Section-specific fouling characteristics following real physics
+        # Section-specific fouling characteristics
         self.section_fouling_factors = {
             'furnace_walls': {
-                'base_deposition': 4.0,      # HIGHEST - soot formation zone
-                'temperature_factor': 2.0,   # Very sensitive to high temperature
-                'velocity_factor': 0.8,      # High velocity reduces some deposition
-                'surface_factor': 1.5,       # Rough surfaces increase fouling
-                'description': 'Maximum fouling - primary soot formation'
+                'temperature_factor': 0.3,  # High temp reduces sticking
+                'velocity_factor': 0.8,     # High velocity reduces deposition
+                'surface_factor': 1.2       # Rough surfaces increase fouling
             },
             'generating_bank': {
-                'base_deposition': 3.2,      # HIGH - still in hot zone
-                'temperature_factor': 1.8,
+                'temperature_factor': 0.8,
                 'velocity_factor': 1.0,
-                'surface_factor': 1.2,
-                'description': 'High fouling - hot soot deposition'
+                'surface_factor': 1.0
             },
             'superheater_primary': {
-                'base_deposition': 2.5,      # HIGH - particles still hot and sticky
-                'temperature_factor': 1.5,
+                'temperature_factor': 0.6,
                 'velocity_factor': 1.2,
-                'surface_factor': 1.0,
-                'description': 'Moderate-high fouling - transitional zone'
+                'surface_factor': 0.9
             },
             'superheater_secondary': {
-                'base_deposition': 2.0,      # MODERATE-HIGH
-                'temperature_factor': 1.2,
+                'temperature_factor': 0.7,
                 'velocity_factor': 1.1,
-                'surface_factor': 0.9,
-                'description': 'Moderate fouling - cooling particles'
+                'surface_factor': 0.9
             },
             'economizer_primary': {
-                'base_deposition': 1.0,      # MODERATE - cooler, less sticky
-                'temperature_factor': 0.8,   # Lower sensitivity to temperature
+                'temperature_factor': 1.2,  # Lower temp increases sticking
                 'velocity_factor': 0.9,
-                'surface_factor': 1.1,
-                'description': 'Moderate fouling - reduced deposition'
+                'surface_factor': 1.1
             },
             'economizer_secondary': {
-                'base_deposition': 0.6,      # LOW-MODERATE - much cooler
-                'temperature_factor': 0.6,
+                'temperature_factor': 1.5,  # Coldest section, most fouling
                 'velocity_factor': 0.8,
-                'surface_factor': 1.2,
-                'description': 'Low fouling - cool gas conditions'
+                'surface_factor': 1.2
             },
             'air_heater': {
-                'base_deposition': 0.2,      # LOWEST - cold, minimal sticking
-                'temperature_factor': 0.3,   # Very low sensitivity
+                'temperature_factor': 1.8,  # Very cold, high fouling
                 'velocity_factor': 0.7,
-                'surface_factor': 1.3,
-                'description': 'Minimal fouling - cold gas, low adhesion'
+                'surface_factor': 1.3
             }
         }
     
     def calculate_section_fouling_rates(self, combustion_model: CoalCombustionModel,
                                       coal_properties: Dict,
                                       boiler_system) -> Dict[str, Dict[str, list]]:
-        """Calculate CORRECTED fouling rates for each section and segment."""
+        """Calculate fouling rates for each section and segment."""
         # Calculate base soot production
         soot_data = self.soot_model.calculate_soot_production(
             combustion_model, coal_properties
@@ -329,20 +339,12 @@ class CombustionFoulingIntegrator:
         
         section_fouling_rates = {}
         
-        print(f"\n🔥 CORRECTED FOULING DISTRIBUTION:")
-        print(f"{'Section':<20} {'Base Rate':<10} {'Description':<30}")
-        print("-" * 65)
-        
         for section_name, section in boiler_system.sections.items():
             section_factors = self.section_fouling_factors.get(section_name, {
-                'base_deposition': 1.0,
                 'temperature_factor': 1.0,
                 'velocity_factor': 1.0,
-                'surface_factor': 1.0,
-                'description': 'Default moderate deposition'
+                'surface_factor': 1.0
             })
-            
-            print(f"{section_name:<20} {section_factors['base_deposition']:<10.1f} {section_factors['description']:<30}")
             
             # Calculate segment-specific fouling rates
             gas_fouling_rates = []
@@ -351,27 +353,28 @@ class CombustionFoulingIntegrator:
             for segment_id in range(section.num_segments):
                 segment_position = segment_id / (section.num_segments - 1) if section.num_segments > 1 else 0
                 
-                # CORRECTED: Calculate realistic local conditions
-                local_gas_temp, local_velocity = self._calculate_realistic_local_conditions(
-                    section_name, segment_position
-                )
+                # Calculate local conditions (simplified)
+                local_gas_temp = 2500 - 1500 * segment_position  # Decreasing temp
+                local_velocity = 50 + 20 * segment_position       # Increasing velocity
                 
-                # Apply CORRECTED deposition model
-                base_rate = section_factors['base_deposition']
-                temp_effect = self._realistic_temperature_effect(local_gas_temp, section_factors['temperature_factor'])
+                # Apply section and local factors
+                temp_effect = self._temperature_fouling_effect(local_gas_temp)
                 velocity_effect = self._velocity_fouling_effect(local_velocity)
-                position_effect = 1.0 - 0.3 * segment_position  # CORRECTED: Decreases along path
-                surface_effect = section_factors['surface_factor']
+                position_effect = 1.0 + segment_position * 0.5  # More fouling downstream
                 
                 # Calculate fouling rate for this segment
-                segment_fouling_rate = (soot_data.mass_production_rate * 
-                                      soot_data.deposition_tendency * 
-                                      base_rate * temp_effect * velocity_effect * 
-                                      position_effect * surface_effect)
+                base_gas_fouling_rate = (soot_data.mass_production_rate * 
+                                       soot_data.deposition_tendency * 
+                                       section_factors['temperature_factor'] *
+                                       section_factors['velocity_factor'] *
+                                       section_factors['surface_factor'] *
+                                       temp_effect * velocity_effect * position_effect)
+                
+                base_water_fouling_rate = base_gas_fouling_rate * 0.3  # Water side typically less
                 
                 # Convert to fouling resistance units (hr-ft²-°F/Btu per hour)
-                gas_fouling_rate = segment_fouling_rate * 1e-6  # Conversion factor
-                water_fouling_rate = gas_fouling_rate * 0.25  # Water side typically less
+                gas_fouling_rate = base_gas_fouling_rate * 1e-6  # Conversion factor
+                water_fouling_rate = base_water_fouling_rate * 1e-6
                 
                 gas_fouling_rates.append(gas_fouling_rate)
                 water_fouling_rates.append(water_fouling_rate)
@@ -383,46 +386,18 @@ class CombustionFoulingIntegrator:
         
         return section_fouling_rates
     
-    def _calculate_realistic_local_conditions(self, section_name: str, 
-                                            segment_position: float) -> tuple:
-        """CORRECTED: Calculate realistic local gas temperature and velocity."""
-        # CORRECTED: Realistic temperature progression through boiler
-        section_base_temps = {
-            'furnace_walls': 2800,        # HOTTEST - furnace exit
-            'generating_bank': 2200,      # Hot superheated steam generation
-            'superheater_primary': 1800,  # Primary superheating
-            'superheater_secondary': 1400, # Secondary superheating  
-            'economizer_primary': 1000,   # Feed water heating
-            'economizer_secondary': 600,  # Final feed water heating
-            'air_heater': 350            # COLDEST - near stack
-        }
-        
-        base_temp = section_base_temps.get(section_name, 1200)
-        
-        # Temperature decreases along each section as gas cools
-        local_gas_temp = base_temp - (base_temp * 0.15 * segment_position)  # 15% drop maximum
-        
-        # Velocity typically increases as gas cools and density decreases
-        base_velocity = 45  # fps
-        local_velocity = base_velocity + 15 * segment_position
-        
-        return local_gas_temp, local_velocity
-    
-    def _realistic_temperature_effect(self, gas_temp_F: float, sensitivity: float) -> float:
-        """CORRECTED: Calculate realistic temperature effect on soot deposition."""
-        # CORRECTED: Higher temperatures INCREASE soot sticking (opposite of original)
-        if gas_temp_F > 2500:
-            return 2.0 * sensitivity  # Very high temp, maximum sticking
-        elif gas_temp_F > 2000:
-            return 1.6 * sensitivity  # High temp, high sticking
+    def _temperature_fouling_effect(self, gas_temp_F: float) -> float:
+        """Calculate temperature effect on fouling deposition."""
+        if gas_temp_F > 2000:
+            return 0.2  # Very high temp, minimal sticking
         elif gas_temp_F > 1500:
-            return 1.2 * sensitivity  # Moderate temp, moderate sticking
+            return 0.5
         elif gas_temp_F > 1000:
-            return 0.8 * sensitivity  # Lower temp, reduced sticking
+            return 1.0  # Moderate temp, baseline fouling
         elif gas_temp_F > 500:
-            return 0.5 * sensitivity  # Low temp, low sticking
+            return 1.5  # Lower temp, increased sticking
         else:
-            return 0.2 * sensitivity  # Very low temp, minimal sticking
+            return 2.0  # Very low temp, high fouling
     
     def _velocity_fouling_effect(self, velocity_fps: float) -> float:
         """Calculate velocity effect on fouling deposition."""

@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 """
-CORRECTED: Heat Transfer Calculations and Tube Section Models
+Heat Transfer Calculations and Tube Section Models
 
 This module contains heat transfer coefficient calculations and the enhanced
-boiler tube section model with CORRECTED fouling distribution patterns.
-
-MAJOR CORRECTION: Fouling now follows realistic physics:
-- Highest fouling in hot furnace zones (soot formation)
-- Decreasing fouling toward stack (cooling gas, less adhesion)
+boiler tube section model with segmented analysis.
 
 Classes:
     SegmentResult: Dataclass for individual segment results
     HeatTransferCalculator: Heat transfer coefficient calculations
-    EnhancedBoilerTubeSection: Tube section with corrected fouling control
+    EnhancedBoilerTubeSection: Tube section with individual fouling control
 
 Dependencies:
     - numpy: Numerical calculations
@@ -21,7 +17,7 @@ Dependencies:
     - typing: Type hints
 
 Author: Enhanced Boiler Modeling System
-Version: 5.1 - CORRECTED Fouling Physics
+Version: 5.0 - Segmented Heat Transfer Analysis
 """
 
 import math
@@ -64,7 +60,19 @@ class HeatTransferCalculator:
     def calculate_reynolds_number(flow_rate: float, density: float, 
                                 hydraulic_diameter: float, viscosity: float,
                                 flow_area: float) -> float:
-        """Calculate Reynolds number for flow conditions."""
+        """
+        Calculate Reynolds number for flow conditions.
+        
+        Args:
+            flow_rate: Mass flow rate (lbm/hr)
+            density: Fluid density (lbm/ft³)
+            hydraulic_diameter: Hydraulic diameter (ft)
+            viscosity: Dynamic viscosity (lbm/hr-ft)
+            flow_area: Flow cross-sectional area (ft²)
+            
+        Returns:
+            Reynolds number (dimensionless)
+        """
         if viscosity <= 0 or flow_area <= 0:
             return 0
         
@@ -74,7 +82,19 @@ class HeatTransferCalculator:
     @staticmethod
     def calculate_nusselt_number(reynolds: float, prandtl: float, geometry: str,
                                section_type: str, phase: str = 'liquid') -> float:
-        """Calculate Nusselt number based on flow conditions and geometry."""
+        """
+        Calculate Nusselt number based on flow conditions and geometry.
+        
+        Args:
+            reynolds: Reynolds number
+            prandtl: Prandtl number
+            geometry: 'tube_side' or 'shell_side'
+            section_type: Section classification ('radiant', 'convective', etc.)
+            phase: Fluid phase for special correlations
+            
+        Returns:
+            Nusselt number (dimensionless)
+        """
         if geometry == 'tube_side':
             if reynolds > 2300:  # Turbulent flow
                 if phase == 'superheated_steam':
@@ -104,7 +124,21 @@ class HeatTransferCalculator:
                                           properties: Union[SteamProperties, GasProperties], 
                                           geometry: str, section_type: str,
                                           tube_count: int, tube_id: float) -> float:
-        """Calculate convective heat transfer coefficient."""
+        """
+        Calculate convective heat transfer coefficient.
+        
+        Args:
+            flow_rate: Mass flow rate (lbm/hr)
+            hydraulic_diameter: Hydraulic diameter for correlation (ft)
+            properties: Fluid properties (SteamProperties or GasProperties)
+            geometry: Flow geometry ('tube_side' or 'shell_side')
+            section_type: Section type for correlation selection
+            tube_count: Number of tubes
+            tube_id: Tube inner diameter (ft)
+            
+        Returns:
+            Heat transfer coefficient (Btu/hr-ft²-°F)
+        """
         if flow_rate <= 0:
             return 1.0  # Minimum value
         
@@ -134,12 +168,24 @@ class HeatTransferCalculator:
 
 
 class EnhancedBoilerTubeSection:
-    """Enhanced tube section model with CORRECTED fouling distribution patterns."""
+    """Enhanced tube section model with segmented analysis and individual fouling control."""
     
     def __init__(self, name: str, tube_od: float, tube_id: float, tube_length: float, 
                  tube_count: int, base_fouling_gas: float, base_fouling_water: float,
                  section_type: str = 'convective'):
-        """Initialize enhanced boiler tube section with corrected fouling."""
+        """
+        Initialize enhanced boiler tube section.
+        
+        Args:
+            name: Descriptive name of the section
+            tube_od: Tube outer diameter (ft)
+            tube_id: Tube inner diameter (ft)
+            tube_length: Total tube length (ft)
+            tube_count: Number of tubes in parallel
+            base_fouling_gas: Base gas-side fouling factor (hr-ft²-°F/Btu)
+            base_fouling_water: Base water-side fouling factor (hr-ft²-°F/Btu)
+            section_type: Section classification ('radiant', 'convective', 'superheater', 'economizer')
+        """
         if tube_od <= tube_id:
             raise ValueError(f"Tube OD ({tube_od}) must be greater than ID ({tube_id})")
         if tube_length <= 0 or tube_count <= 0:
@@ -169,22 +215,42 @@ class EnhancedBoilerTubeSection:
         # Results storage
         self.results: List[SegmentResult] = []
     
+    def set_custom_fouling_arrays(self, gas_fouling_array: List[float], 
+                                 water_fouling_array: List[float]):
+        """Set custom fouling factor arrays for individual segment control."""
+        if len(gas_fouling_array) != self.num_segments:
+            raise ValueError(f"Gas fouling array length ({len(gas_fouling_array)}) must match segments ({self.num_segments})")
+        if len(water_fouling_array) != self.num_segments:
+            raise ValueError(f"Water fouling array length ({len(water_fouling_array)}) must match segments ({self.num_segments})")
+        
+        self.custom_fouling_arrays = {
+            'gas': gas_fouling_array.copy(),
+            'water': water_fouling_array.copy()
+        }
+        
+        print(f"✓ Custom fouling arrays set for {self.name}: {self.num_segments} segments")
+    
+    def clear_custom_fouling_arrays(self):
+        """Clear custom fouling arrays and return to standard gradient calculation."""
+        self.custom_fouling_arrays = None
+        print(f"✓ Custom fouling arrays cleared for {self.name}, using standard gradients")
+    
     def get_current_fouling_arrays(self) -> Dict[str, List[float]]:
-        """Get current fouling arrays using CORRECTED gradient calculation."""
+        """Get current fouling arrays (custom if set, otherwise calculated gradients)."""
         if self.custom_fouling_arrays is not None:
             return self.custom_fouling_arrays.copy()
         
-        # Calculate CORRECTED gradients
+        # Calculate standard gradients
         gas_fouling = []
         water_fouling = []
         
         for i in range(self.num_segments):
             segment_position = i / (self.num_segments - 1) if self.num_segments > 1 else 0
             
-            # CORRECTED: Estimate realistic temperatures based on section type
-            avg_gas_temp, avg_water_temp = self._estimate_realistic_temperatures(segment_position)
+            # Estimate average temperatures for gradient calculation
+            avg_gas_temp = 2000 - 1000 * segment_position  # Rough estimate
+            avg_water_temp = 300 + 200 * segment_position   # Rough estimate
             
-            # Use CORRECTED fouling calculation
             gas_foul, water_foul = FoulingCalculator.calculate_fouling_gradient(
                 self.base_fouling_gas, self.base_fouling_water,
                 segment_position, avg_gas_temp, avg_water_temp
@@ -195,30 +261,41 @@ class EnhancedBoilerTubeSection:
         
         return {'gas': gas_fouling, 'water': water_fouling}
     
-    def _estimate_realistic_temperatures(self, segment_position: float) -> tuple:
-        """CORRECTED: Estimate realistic temperatures based on section type and position."""
-        # CORRECTED: Realistic temperature mapping by section
-        section_temp_map = {
-            'radiant': {'base_gas': 2800, 'gas_drop': 400, 'base_water': 350, 'water_rise': 50},
-            'furnace': {'base_gas': 2800, 'gas_drop': 400, 'base_water': 350, 'water_rise': 50},
-            'generating': {'base_gas': 2200, 'gas_drop': 300, 'base_water': 400, 'water_rise': 100},
-            'superheater': {'base_gas': 1800, 'gas_drop': 200, 'base_water': 550, 'water_rise': 80},
-            'economizer': {'base_gas': 1000, 'gas_drop': 200, 'base_water': 220, 'water_rise': 60},
-            'convective': {'base_gas': 800, 'gas_drop': 150, 'base_water': 200, 'water_rise': 40}
-        }
+    def apply_soot_blowing(self, blown_segments: List[int], 
+                          cleaning_effectiveness: float = 0.85):
+        """Apply soot blowing to specific segments."""
+        if self.custom_fouling_arrays is None:
+            # Initialize with current gradients
+            self.custom_fouling_arrays = self.get_current_fouling_arrays()
         
-        # Get temperature profile for this section type
-        temp_profile = section_temp_map.get(self.section_type, section_temp_map['convective'])
+        # Apply cleaning to specified segments
+        self.custom_fouling_arrays = SootBlowingSimulator.simulate_partial_soot_blowing(
+            self.custom_fouling_arrays, blown_segments, cleaning_effectiveness
+        )
         
-        # Calculate temperatures at this position
-        avg_gas_temp = temp_profile['base_gas'] - temp_profile['gas_drop'] * segment_position
-        avg_water_temp = temp_profile['base_water'] + temp_profile['water_rise'] * segment_position
+        print(f"✓ Soot blowing applied to {self.name}, segments: {blown_segments}")
+        print(f"  Cleaning effectiveness: {cleaning_effectiveness:.1%}")
+    
+    def simulate_fouling_buildup(self, operating_hours: float, 
+                               fouling_rate_per_hour: float = 0.001):
+        """Simulate progressive fouling buildup over time."""
+        if self.custom_fouling_arrays is None:
+            # Start with clean baseline
+            clean_arrays = SootBlowingSimulator.create_clean_fouling_array(
+                self.num_segments, self.base_fouling_gas, self.base_fouling_water, 0.0
+            )
+            self.custom_fouling_arrays = clean_arrays
         
-        return avg_gas_temp, avg_water_temp
+        # Apply fouling buildup
+        self.custom_fouling_arrays = SootBlowingSimulator.simulate_progressive_fouling(
+            self.custom_fouling_arrays, operating_hours, fouling_rate_per_hour
+        )
+        
+        print(f"✓ Fouling buildup simulated for {self.name}: {operating_hours} hours")
     
     def solve_segment(self, segment_id: int, gas_temp_in: float, water_temp_in: float,
                      gas_flow: float, water_flow: float, steam_pressure: float) -> SegmentResult:
-        """Solve heat transfer analysis for individual tube segment with CORRECTED fouling."""
+        """Solve heat transfer analysis for individual tube segment with custom fouling support."""
         if segment_id < 0 or segment_id >= self.num_segments:
             raise ValueError(f"Invalid segment_id {segment_id}")
         
@@ -234,16 +311,16 @@ class EnhancedBoilerTubeSection:
         avg_water_temp = (water_temp_in + water_temp_out) / 2
         
         # Get fluid properties using thermo library
-        gas_props = self.property_calc.get_flue_gas_properties_safe(avg_gas_temp)
-        water_props = self.property_calc.get_steam_properties_safe(avg_water_temp, steam_pressure)
+        gas_props = self.property_calc.get_flue_gas_properties(avg_gas_temp)
+        water_props = self.property_calc.get_steam_properties(avg_water_temp, steam_pressure)
         
-        # Calculate CORRECTED fouling factors
+        # Calculate fouling factors (custom or gradient-based)
         if self.custom_fouling_arrays is not None:
             # Use custom fouling arrays
             gas_fouling = self.custom_fouling_arrays['gas'][segment_id]
             water_fouling = self.custom_fouling_arrays['water'][segment_id]
         else:
-            # Use CORRECTED gradient calculation
+            # Use standard gradient calculation
             gas_fouling, water_fouling = FoulingCalculator.calculate_fouling_gradient(
                 self.base_fouling_gas, self.base_fouling_water, 
                 segment_position, avg_gas_temp, avg_water_temp
@@ -296,25 +373,25 @@ class EnhancedBoilerTubeSection:
     
     def _calculate_temperature_drops(self, segment_position: float) -> Dict[str, float]:
         """Calculate realistic temperature drops for different section types."""
-        if self.section_type == 'radiant' or 'furnace' in self.section_type:
+        if self.section_type == 'radiant':
             return {
-                'gas': 300 + 200 * (1 - segment_position),  # Higher drops in hot sections
-                'water': 40 + 30 * segment_position
-            }
-        elif 'superheater' in self.section_type:
-            return {
-                'gas': 200 - 50 * segment_position,
-                'water': 60 + 40 * segment_position
-            }
-        elif 'economizer' in self.section_type:
-            return {
-                'gas': 150 + 50 * (1 - segment_position),
-                'water': 45 + 25 * segment_position
-            }
-        else:  # convective/air heater
-            return {
-                'gas': 100 + 30 * segment_position,
+                'gas': 200 + 100 * (1 - segment_position),
                 'water': 30 + 20 * segment_position
+            }
+        elif self.section_type == 'superheater':
+            return {
+                'gas': 150 - 30 * segment_position,
+                'water': 40 + 20 * segment_position
+            }
+        elif self.section_type == 'economizer':
+            return {
+                'gas': 120 + 40 * (1 - segment_position),
+                'water': 35 + 15 * segment_position
+            }
+        else:  # convective
+            return {
+                'gas': 100 + 50 * segment_position,
+                'water': 25 + 15 * segment_position
             }
     
     def _calculate_overall_U(self, h_gas: float, h_water: float, 
@@ -411,56 +488,3 @@ class EnhancedBoilerTubeSection:
             'max_gas_fouling': max(r.fouling_gas for r in self.results),
             'max_water_fouling': max(r.fouling_water for r in self.results)
         }
-    
-    # Inherit other methods from original implementation for soot blowing
-    def set_custom_fouling_arrays(self, gas_fouling_array: List[float], 
-                                 water_fouling_array: List[float]):
-        """Set custom fouling factor arrays for individual segment control."""
-        if len(gas_fouling_array) != self.num_segments:
-            raise ValueError(f"Gas fouling array length ({len(gas_fouling_array)}) must match segments ({self.num_segments})")
-        if len(water_fouling_array) != self.num_segments:
-            raise ValueError(f"Water fouling array length ({len(water_fouling_array)}) must match segments ({self.num_segments})")
-        
-        self.custom_fouling_arrays = {
-            'gas': gas_fouling_array.copy(),
-            'water': water_fouling_array.copy()
-        }
-        
-        print(f"✓ Custom fouling arrays set for {self.name}: {self.num_segments} segments")
-    
-    def clear_custom_fouling_arrays(self):
-        """Clear custom fouling arrays and return to CORRECTED gradient calculation."""
-        self.custom_fouling_arrays = None
-        print(f"✓ Custom fouling arrays cleared for {self.name}, using CORRECTED gradients")
-    
-    def apply_soot_blowing(self, blown_segments: List[int], 
-                          cleaning_effectiveness: float = 0.85):
-        """Apply soot blowing to specific segments."""
-        if self.custom_fouling_arrays is None:
-            # Initialize with current CORRECTED gradients
-            self.custom_fouling_arrays = self.get_current_fouling_arrays()
-        
-        # Apply cleaning to specified segments
-        self.custom_fouling_arrays = SootBlowingSimulator.simulate_partial_soot_blowing(
-            self.custom_fouling_arrays, blown_segments, cleaning_effectiveness
-        )
-        
-        print(f"✓ Soot blowing applied to {self.name}, segments: {blown_segments}")
-        print(f"  Cleaning effectiveness: {cleaning_effectiveness:.1%}")
-    
-    def simulate_fouling_buildup(self, operating_hours: float, 
-                               fouling_rate_per_hour: float = 0.001):
-        """Simulate progressive fouling buildup over time."""
-        if self.custom_fouling_arrays is None:
-            # Start with clean baseline using CORRECTED gradients
-            clean_arrays = SootBlowingSimulator.create_clean_fouling_array(
-                self.num_segments, self.base_fouling_gas, self.base_fouling_water, 0.0
-            )
-            self.custom_fouling_arrays = clean_arrays
-        
-        # Apply fouling buildup
-        self.custom_fouling_arrays = SootBlowingSimulator.simulate_progressive_fouling(
-            self.custom_fouling_arrays, operating_hours, fouling_rate_per_hour
-        )
-        
-        print(f"✓ Fouling buildup simulated for {self.name}: {operating_hours} hours")
