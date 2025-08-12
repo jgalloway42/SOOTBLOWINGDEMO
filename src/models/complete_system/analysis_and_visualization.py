@@ -226,7 +226,7 @@ class Visualizer:
         self._configure_axes(ax3, 'Gas-Side Fouling Gradients', 'Fouling Factor (hr-ft²-°F/Btu)', log_scale=True)
         self._configure_axes(ax4, 'Water-Side Fouling Gradients', 'Fouling Factor (hr-ft²-°F/Btu)', log_scale=True)
         
-        colors = ['red', 'orange', 'green', 'blue', 'purple', 'brown', 'pink']
+        colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
         position_offset = 0
         
         for i, (section_name, data) in enumerate(self.system.section_results.items()):
