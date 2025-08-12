@@ -1,0 +1,128 @@
+ENHANCED BOILER SYSTEM ANALYSIS WITH COAL COMBUSTION INTEGRATION
+======================================================================
+Analysis Date: 2025-08-12 09:56:01
+Property Library: Thermo (Comprehensive Thermodynamics)
+
+SYSTEM CONFIGURATION:
+  Design Capacity: 100 MMBtu/hr
+  Steam Pressure:  600 psia
+  Gas Flow:        84,000 lbm/hr
+  Water Flow:      68,000 lbm/hr
+
+PERFORMANCE RESULTS:
+  Total Heat Absorbed: 11.8 MMBtu/hr
+  System Efficiency: 11.8%
+  Final Steam Temperature: 699.3°F
+  Steam Superheat: 0.0 MMBtu/hr
+  Stack Temperature: 2560.7°F
+  Attemperator Flow: 1859.1°F
+  Steam Production: 67819.12
+  Iterations To Converge: 12.00
+
+DETAILED SECTION ANALYSIS:
+======================================================================
+
+FURNACE WALL TUBES:
+  Heat Transfer: 0.04 MMBtu/hr
+  Segments: 5
+  Gas: 3000°F → 2998°F
+  Water: 2968°F → 2971°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    3000     3000      2968       2968       -4  11.51   0.00030     0.00018
+     1  0.25    3000     3000      2968       2968        6  11.51   0.00036     0.00021
+     2  0.50    3000     3000      2968       2969       12  11.50   0.00042     0.00023
+     3  0.75    3000     2999      2969       2970       15  11.49   0.00048     0.00026
+     4  1.00    2999     2998      2970       2971       16  11.48   0.00054     0.00029
+
+GENERATING BANK:
+  Heat Transfer: 3.31 MMBtu/hr
+  Segments: 5
+  Gas: 2998°F → 2877°F
+  Water: 1125°F → 1216°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2998     2973      1125       1144      706   1.13   0.00120     0.00060
+     1  0.25    2973     2948      1144       1163      683   1.12   0.00144     0.00069
+     2  0.50    2948     2923      1163       1182      660   1.11   0.00168     0.00078
+     3  0.75    2923     2900      1182       1199      639   1.11   0.00192     0.00087
+     4  1.00    2900     2877      1199       1216      618   1.10   0.00216     0.00096
+
+PRIMARY SUPERHEATER:
+  Heat Transfer: 1.07 MMBtu/hr
+  Segments: 5
+  Gas: 2877°F → 2838°F
+  Water: 772°F → 804°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2877     2869       772        778      218   1.11   0.00090     0.00030
+     1  0.25    2869     2861       778        785      215   1.10   0.00108     0.00034
+     2  0.50    2861     2853       785        791      213   1.10   0.00126     0.00039
+     3  0.75    2853     2845       791        798      211   1.10   0.00144     0.00043
+     4  1.00    2845     2838       798        804      210   1.10   0.00162     0.00048
+
+SECONDARY SUPERHEATER:
+  Heat Transfer: 0.90 MMBtu/hr
+  Segments: 5
+  Gas: 2838°F → 2804°F
+  Water: 699°F → 699°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2838     2831       699        705      182   1.09   0.00120     0.00030
+     1  0.25    2831     2824       705        711      181   1.09   0.00144     0.00034
+     2  0.50    2824     2817       711        716      179   1.09   0.00168     0.00039
+     3  0.75    2817     2811       716        722      178   1.09   0.00192     0.00043
+     4  1.00    2811     2804       722        727      176   1.08   0.00216     0.00048
+
+PRIMARY ECONOMIZER:
+  Heat Transfer: 2.18 MMBtu/hr
+  Segments: 5
+  Gas: 2804°F → 2723°F
+  Water: 534°F → 602°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2804     2787       534        548      453   1.07   0.00180     0.00120
+     1  0.25    2787     2771       548        562      444   1.06   0.00216     0.00138
+     2  0.50    2771     2754       562        576      436   1.06   0.00252     0.00156
+     3  0.75    2754     2738       576        589      428   1.05   0.00288     0.00174
+     4  1.00    2738     2723       589        602      420   1.04   0.00324     0.00192
+
+SECONDARY ECONOMIZER:
+  Heat Transfer: 1.51 MMBtu/hr
+  Segments: 5
+  Gas: 2723°F → 2666°F
+  Water: 374°F → 394°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2723     2711       374        378      309   1.06   0.00240     0.00353
+     1  0.25    2711     2699       378        382      305   1.05   0.00288     0.00399
+     2  0.50    2699     2688       382        386      302   1.05   0.00336     0.00445
+     3  0.75    2688     2677       386        390      299   1.04   0.00384     0.00491
+     4  1.00    2677     2666       390        394      296   1.04   0.00432     0.00538
+
+AIR HEATER:
+  Heat Transfer: 2.75 MMBtu/hr
+  Segments: 5
+  Gas: 2666°F → 2561°F
+  Water: 427°F → 471°F
+
+  Segment Details:
+    Seg  Pos   Gas In  Gas Out  Water In  Water Out  Q(kBtu)  U      Gas Foul  Water Foul
+    -------------------------------------------------------------------------------------
+     0  0.00    2666     2644       427        436      576   1.18   0.00360     0.00148
+     1  0.25    2644     2622       436        445      563   1.17   0.00432     0.00167
+     2  0.50    2622     2601       445        454      550   1.16   0.00504     0.00187
+     3  0.75    2601     2581       454        463      537   1.15   0.00576     0.00208
+     4  1.00    2581     2561       463        471      525   1.14   0.00648     0.00228

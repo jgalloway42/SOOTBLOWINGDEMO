@@ -121,7 +121,7 @@ class SystemAnalyzer:
     
     def export_detailed_results(self, filename: str = "enhanced_boiler_analysis.txt"):
         """Export comprehensive analysis to file."""
-        with open(filename, 'w') as f:
+        with open(filename, 'w', encoding='utf-8') as f:
             f.write("ENHANCED BOILER SYSTEM ANALYSIS WITH COAL COMBUSTION INTEGRATION\n")
             f.write("=" * 70 + "\n")
             f.write(f"Analysis Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
@@ -226,7 +226,7 @@ class Visualizer:
         self._configure_axes(ax3, 'Gas-Side Fouling Gradients', 'Fouling Factor (hr-ft²-°F/Btu)', log_scale=True)
         self._configure_axes(ax4, 'Water-Side Fouling Gradients', 'Fouling Factor (hr-ft²-°F/Btu)', log_scale=True)
         
-        colors = ['#FF4444', '#FF8800', '#00AA00', '#0088FF', '#8800FF', '#AA6600', '#FF0088']
+        colors = ['red', 'orange', 'green', 'blue', 'purple', 'brown', 'pink']
         position_offset = 0
         
         for i, (section_name, data) in enumerate(self.system.section_results.items()):

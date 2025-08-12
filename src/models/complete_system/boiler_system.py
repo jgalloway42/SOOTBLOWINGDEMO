@@ -183,8 +183,8 @@ class EnhancedCompleteBoilerSystem:
             return 0
         
         # Get properties for energy balance
-        steam_props = self.property_calc.get_steam_properties(steam_temp_before, self.steam_pressure)
-        water_props = self.property_calc.get_steam_properties(self.feedwater_temp, self.steam_pressure)
+        steam_props = self.property_calc.get_steam_properties_safe(steam_temp_before, self.steam_pressure)
+        water_props = self.property_calc.get_steam_properties_safe(self.feedwater_temp, self.steam_pressure)
         
         # Energy balance calculation
         numerator = steam_flow * steam_props.cp * (steam_temp_before - target_temp)
@@ -277,8 +277,8 @@ class EnhancedCompleteBoilerSystem:
                 
                 if self.attemperator_flow > 0:
                     # Apply attemperator correction
-                    steam_props = self.property_calc.get_steam_properties(final_steam_temp, self.steam_pressure)
-                    water_props = self.property_calc.get_steam_properties(self.feedwater_temp, self.steam_pressure)
+                    steam_props = self.property_calc.get_steam_properties_safe(final_steam_temp, self.steam_pressure)
+                    water_props = self.property_calc.get_steam_properties_safe(self.feedwater_temp, self.steam_pressure)
                     
                     adjusted_temp = ((final_steam_temp * main_steam_flow * steam_props.cp + 
                                     self.feedwater_temp * self.attemperator_flow * water_props.cp) / 

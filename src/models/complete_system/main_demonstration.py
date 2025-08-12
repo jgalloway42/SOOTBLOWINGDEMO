@@ -44,7 +44,7 @@ def demonstrate_combustion_fouling_integration():
     boiler = EnhancedCompleteBoilerSystem(
         fuel_input=100e6,
         flue_gas_mass_flow=84000,
-        furnace_exit_temp=3000,
+        furnace_exit_temp=2200.,
         base_fouling_multiplier=1.0
     )
     
