@@ -100,20 +100,24 @@ class BoilerDataAnalyzer:
             'final_steam_temp_F': self.data['final_steam_temp_F'],
             'stack_temp_F': self.data['stack_temp_F'],
             'total_nox_lb_hr': self.data['total_nox_lb_hr'],
-            'load_factor': self.data['load_factor']
+            'load_factor': self.data['load_factor'],
+            'co_ppm': self.data['co_ppm'] if 'co_ppm' in self.data.columns else None,
+            'co2_pct': self.data['co2_pct'] if 'co2_pct' in self.data.columns else None,
+            'so2_ppm': self.data['so2_ppm'] if 'so2_ppm' in self.data.columns else None
         }
         
         summary = {}
         for metric, values in performance_metrics.items():
-            summary[metric] = {
-                'mean': values.mean(),
-                'std': values.std(),
-                'min': values.min(),
-                'max': values.max(),
-                'median': values.median(),
-                'p5': values.quantile(0.05),
-                'p95': values.quantile(0.95)
-            }
+            if values is not None:
+                summary[metric] = {
+                    'mean': values.mean(),
+                    'std': values.std(),
+                    'min': values.min(),
+                    'max': values.max(),
+                    'median': values.median(),
+                    'p5': values.quantile(0.05),
+                    'p95': values.quantile(0.95)
+                }
         
         # Calculate availability and reliability metrics
         total_hours = len(self.data) * 4  # 4-hour intervals
@@ -130,14 +134,25 @@ class BoilerDataAnalyzer:
     
     def _analyze_seasonal_patterns(self) -> Dict:
         """Analyze seasonal performance patterns."""
-        seasonal_data = self.data.groupby('season').agg({
+        # Remove None entries from seasonal data aggregation
+        agg_dict = {
             'system_efficiency': ['mean', 'std'],
             'stack_temp_F': ['mean', 'std'],
             'total_nox_lb_hr': ['mean', 'std'],
             'ambient_temp_F': ['mean', 'min', 'max'],
             'load_factor': ['mean', 'std'],
             'coal_rate_lb_hr': ['mean', 'std']
-        }).round(4)
+        }
+        
+        # Add stack gas components if available
+        if 'co_ppm' in self.data.columns:
+            agg_dict['co_ppm'] = ['mean', 'std']
+        if 'co2_pct' in self.data.columns:
+            agg_dict['co2_pct'] = ['mean', 'std']
+        if 'so2_ppm' in self.data.columns:
+            agg_dict['so2_ppm'] = ['mean', 'std']
+        
+        seasonal_data = self.data.groupby('season').agg(agg_dict).round(4)
         
         # Flatten column names
         seasonal_data.columns = [f"{col[0]}_{col[1]}" for col in seasonal_data.columns]
@@ -475,12 +490,32 @@ class BoilerDataAnalyzer:
         plt.xlabel('Ambient Temperature (°F)')
         plt.ylabel('System Efficiency')
         
-        # 6. NOx emissions over time
+        # 6. Stack gas emissions over time
         plt.subplot(4, 3, 6)
-        self.data.set_index('timestamp')['total_nox_lb_hr'].resample('W').mean().plot(color='red')
-        plt.title('Weekly NOx Emissions Trend')
-        plt.ylabel('NOx (lb/hr)')
-        plt.xticks(rotation=45)
+        if 'co_ppm' in self.data.columns:
+            # Plot multiple emissions on same chart with different scales
+            ax6_co = plt.gca()
+            line1 = ax6_co.plot(self.data.set_index('timestamp').resample('W')['co_ppm'].mean(), 
+                               color='red', label='CO (ppm)')
+            ax6_co.set_ylabel('CO (ppm)', color='red')
+            ax6_co.tick_params(axis='y', labelcolor='red')
+            
+            # Create second y-axis for SO2
+            if 'so2_ppm' in self.data.columns:
+                ax6_so2 = ax6_co.twinx()
+                line2 = ax6_so2.plot(self.data.set_index('timestamp').resample('W')['so2_ppm'].mean(), 
+                                    color='orange', label='SO2 (ppm)')
+                ax6_so2.set_ylabel('SO2 (ppm)', color='orange')
+                ax6_so2.tick_params(axis='y', labelcolor='orange')
+            
+            plt.title('Weekly Stack Gas Emissions')
+            plt.xticks(rotation=45)
+        else:
+            # Fallback to NOx if new components not available
+            self.data.set_index('timestamp')['total_nox_lb_hr'].resample('W').mean().plot(color='red')
+            plt.title('Weekly NOx Emissions Trend')
+            plt.ylabel('NOx (lb/hr)')
+            plt.xticks(rotation=45)
         
         # 7. Fouling progression for worst section
         plt.subplot(4, 3, 7)
@@ -589,6 +624,8 @@ class BoilerDataAnalyzer:
         print(f"   • Negotiate coal contracts to increase high-quality fuel percentage")
         print(f"   • Adjust operating loads to maximize efficiency")
         print(f"   • Plan major maintenance during lowest-demand seasons")
+        print(f"   • Monitor stack gas emissions for environmental compliance")
+        print(f"   • Consider combustion optimization to reduce CO and improve efficiency")
 
 
 def main():

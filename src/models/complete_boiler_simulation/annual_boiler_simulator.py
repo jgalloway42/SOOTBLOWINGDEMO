@@ -403,6 +403,11 @@ class AnnualBoilerSimulator:
         
         combustion_model.calculate()
         
+        # Calculate additional stack gas components
+        stack_gas_analysis = self._calculate_stack_gas_components(
+            combustion_model, operating_conditions['coal_rate_lb_hr'], coal_props
+        )
+        
         # Solve boiler system
         try:
             self.boiler.solve_enhanced_system(max_iterations=8, tolerance=10.0)
@@ -452,13 +457,23 @@ class AnnualBoilerSimulator:
             'coal_moisture_pct': coal_props['moisture'],
             'coal_heating_value_btu_lb': coal_props['heating_value'],
             
-            # Combustion results
+            # Combustion results and stack gas analysis
             'thermal_nox_lb_hr': combustion_model.NO_thermal_lb_per_hr,
             'fuel_nox_lb_hr': combustion_model.NO_fuel_lb_per_hr,
             'total_nox_lb_hr': combustion_model.NO_total_lb_per_hr,
             'excess_o2_pct': combustion_model.dry_O2_pct,
             'combustion_efficiency': combustion_model.combustion_efficiency,
             'flame_temp_F': combustion_model.flame_temp_F,
+            
+            # Stack gas components
+            'co_ppm': stack_gas_analysis['co_ppm'],
+            'co2_pct': stack_gas_analysis['co2_pct'],
+            'h2o_pct': stack_gas_analysis['h2o_pct'],
+            'so2_ppm': stack_gas_analysis['so2_ppm'],
+            'co_lb_hr': stack_gas_analysis['co_lb_hr'],
+            'co2_lb_hr': stack_gas_analysis['co2_lb_hr'],
+            'h2o_lb_hr': stack_gas_analysis['h2o_lb_hr'],
+            'so2_lb_hr': stack_gas_analysis['so2_lb_hr'],
             
             # System performance
             'system_efficiency': system_performance['system_efficiency'],
@@ -480,7 +495,6 @@ class AnnualBoilerSimulator:
         for section_name in self.boiler.sections.keys():
             operation_data[f'{section_name}_soot_blowing_active'] = soot_blowing_actions[section_name]['action']
             operation_data[f'{section_name}_cleaning_effectiveness'] = soot_blowing_actions[section_name]['effectiveness']
-        }
         
         # Add fouling factors for each section
         for section_name, section in self.boiler.sections.items():
@@ -513,6 +527,96 @@ class AnnualBoilerSimulator:
         
         return operation_data
     
+    def _calculate_stack_gas_components(self, combustion_model, coal_rate_lb_hr: float, 
+                                       coal_props: Dict) -> Dict:
+        """Calculate CO, CO2, H2O, and SO2 concentrations and mass flows in stack gas."""
+        
+        # Get basic combustion parameters
+        excess_o2 = combustion_model.dry_O2_pct
+        combustion_eff = combustion_model.combustion_efficiency
+        flue_gas_rate = combustion_model.total_flue_gas_lb_per_hr
+        
+        # Calculate CO concentration (inversely related to combustion efficiency)
+        # Good combustion: 50-200 ppm, Poor combustion: 500-2000 ppm
+        if combustion_eff > 0.98:
+            co_ppm = np.random.uniform(50, 150)
+        elif combustion_eff > 0.95:
+            co_ppm = np.random.uniform(100, 300)
+        elif combustion_eff > 0.90:
+            co_ppm = np.random.uniform(200, 600)
+        else:
+            co_ppm = np.random.uniform(400, 1200)
+        
+        # Add effect of excess air (more O2 = less CO)
+        if excess_o2 > 4:
+            co_ppm *= 0.7  # Good excess air reduces CO
+        elif excess_o2 < 2:
+            co_ppm *= 1.5  # Low excess air increases CO
+        
+        # Calculate CO2 concentration (typical range 12-18% for coal)
+        # Based on carbon content and excess air
+        carbon_fraction = coal_props['carbon'] / 100
+        theoretical_co2 = carbon_fraction * 44 / 12 * 100  # Stoichiometric CO2%
+        
+        # Actual CO2 is diluted by excess air
+        dilution_factor = 1 / (1 + excess_o2 * 0.04)  # Approximation
+        co2_pct = theoretical_co2 * dilution_factor * 0.16  # Scaling factor for realistic values
+        co2_pct = max(10, min(18, co2_pct))  # Clamp to realistic range
+        
+        # Calculate H2O concentration (typical range 8-15% for coal)
+        # Based on hydrogen content in coal plus moisture
+        hydrogen_fraction = 5.0 / 100  # Typical hydrogen content
+        moisture_fraction = coal_props['moisture'] / 100
+        
+        # Water from hydrogen combustion
+        h2o_from_h2 = hydrogen_fraction * 18 / 2  # H2 + 0.5O2 -> H2O
+        # Water from coal moisture
+        h2o_from_moisture = moisture_fraction
+        # Total water vapor percentage
+        h2o_pct = (h2o_from_h2 + h2o_from_moisture) * 100 * 0.5  # Scaling factor
+        h2o_pct = max(6, min(15, h2o_pct))  # Clamp to realistic range
+        
+        # Calculate SO2 concentration (based on sulfur content)
+        # Typical range: 200-2000 ppm depending on sulfur content and controls
+        sulfur_fraction = coal_props['sulfur'] / 100
+        # Assume some SO2 removal efficiency (scrubber, etc.)
+        so2_removal_eff = np.random.uniform(0.1, 0.4)  # 10-40% removal
+        
+        # Calculate theoretical SO2
+        theoretical_so2_ppm = sulfur_fraction * 64 / 32 * 1e6 / flue_gas_rate * coal_rate_lb_hr
+        so2_ppm = theoretical_so2_ppm * (1 - so2_removal_eff) * 0.001  # Scaling for realistic values
+        so2_ppm = max(50, min(3000, so2_ppm))  # Clamp to realistic range
+        
+        # Convert concentrations to mass flow rates (lb/hr)
+        # Use molecular weights and gas flow rates
+        
+        # CO mass flow (28 g/mol)
+        co_vol_fraction = co_ppm / 1e6
+        co_lb_hr = co_vol_fraction * flue_gas_rate * 28 / 29  # Approximate MW of flue gas ~29
+        
+        # CO2 mass flow (44 g/mol)
+        co2_vol_fraction = co2_pct / 100
+        co2_lb_hr = co2_vol_fraction * flue_gas_rate * 44 / 29
+        
+        # H2O mass flow (18 g/mol)
+        h2o_vol_fraction = h2o_pct / 100
+        h2o_lb_hr = h2o_vol_fraction * flue_gas_rate * 18 / 29
+        
+        # SO2 mass flow (64 g/mol)
+        so2_vol_fraction = so2_ppm / 1e6
+        so2_lb_hr = so2_vol_fraction * flue_gas_rate * 64 / 29
+        
+        return {
+            'co_ppm': co_ppm,
+            'co2_pct': co2_pct,
+            'h2o_pct': h2o_pct,
+            'so2_ppm': so2_ppm,
+            'co_lb_hr': co_lb_hr,
+            'co2_lb_hr': co2_lb_hr,
+            'h2o_lb_hr': h2o_lb_hr,
+            'so2_lb_hr': so2_lb_hr
+        }
+    
     def save_annual_data(self, df: pd.DataFrame, 
                         filename_prefix: str = "massachusetts_boiler_annual") -> str:
         """Save annual data to CSV with comprehensive metadata."""
@@ -534,7 +638,6 @@ class AnnualBoilerSimulator:
             
             f.write("OPERATIONAL PARAMETERS:\n")
             f.write(f"- Load Range: 45-100% of maximum capacity\n")
-            f.write(f"- Recording Interval: Every {save_interval_hours} hours\n")
             f.write(f"- Maximum Capacity: 100 MMBtu/hr\n")
             f.write(f"- Location: Massachusetts, USA\n\n")
             
@@ -592,6 +695,15 @@ def main():
     print(f"\n🌡️ AMBIENT CONDITIONS:")
     print(f"   Temperature: {annual_df['ambient_temp_F'].min():.0f}°F to {annual_df['ambient_temp_F'].max():.0f}°F")
     print(f"   Humidity: {annual_df['ambient_humidity_pct'].min():.0f}% to {annual_df['ambient_humidity_pct'].max():.0f}%")
+    
+    print(f"\n💨 STACK GAS ANALYSIS:")
+    if 'co_ppm' in annual_df.columns:
+        print(f"   CO: {annual_df['co_ppm'].mean():.0f} ± {annual_df['co_ppm'].std():.0f} ppm")
+    if 'co2_pct' in annual_df.columns:
+        print(f"   CO2: {annual_df['co2_pct'].mean():.1f} ± {annual_df['co2_pct'].std():.1f} %")
+    if 'so2_ppm' in annual_df.columns:
+        print(f"   SO2: {annual_df['so2_ppm'].mean():.0f} ± {annual_df['so2_ppm'].std():.0f} ppm")
+    print(f"   NOx: {annual_df['total_nox_lb_hr'].mean():.1f} ± {annual_df['total_nox_lb_hr'].std():.1f} lb/hr")
     
     print(f"\n⚡ COAL USAGE:")
     coal_quality_counts = annual_df['coal_quality'].value_counts()

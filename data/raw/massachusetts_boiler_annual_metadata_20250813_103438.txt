@@ -1,0 +1,10 @@
+MASSACHUSETTS BOILER ANNUAL OPERATION DATASET
+==================================================
+
+Generation Date: 2025-08-13 10:34:39.074699
+Simulation Period: 2024-01-01 00:00:00 to 2024-12-31 00:00:00
+Total Records: 8760
+Total Columns: 142
+
+OPERATIONAL PARAMETERS:
+- Load Range: 45-100% of maximum capacity

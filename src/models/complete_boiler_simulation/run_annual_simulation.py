@@ -64,18 +64,19 @@ def run_complete_simulation():
         print("\n⚙️ STEP 2: Generating Annual Operation Data...")
         print("This will simulate a full year of operation with:")
         print("   • 24/7 continuous operation")
-        print("   • Data recorded every 4 hours (2,190 data points)")
+        print("   • Data recorded every hour (8,760 data points)")
         print("   • Variable load operation (45-100% capacity)")
         print("   • Massachusetts seasonal weather patterns")
         print("   • Multiple coal quality grades")
         print("   • Scheduled soot blowing cycles")
+        print("   • Individual section cleaning tracking")
         print("   • Complete fouling tracking")
-        print("   • Full stack gas analysis")
+        print("   • Full stack gas analysis (CO, CO2, H2O, SO2, NOx, O2)")
         
         # Generate the dataset
         annual_data = simulator.generate_annual_data(
             hours_per_day=24,        # Continuous operation
-            save_interval_hours=1    # Record every 4 hours
+            save_interval_hours=1    # Record every hour
         )
         
         # Step 3: Save the dataset
@@ -112,7 +113,14 @@ def run_complete_simulation():
             f.write(f"Average Load Factor: {perf['load_factor']['mean']:.1%}\n")
             f.write(f"Average Steam Temperature: {perf['final_steam_temp_F']['mean']:.0f}°F\n")
             f.write(f"Average Stack Temperature: {perf['stack_temp_F']['mean']:.0f}°F\n")
-            f.write(f"Average NOx Emissions: {perf['total_nox_lb_hr']['mean']:.1f} lb/hr\n\n")
+            f.write(f"Average NOx Emissions: {perf['total_nox_lb_hr']['mean']:.1f} lb/hr\n")
+            if 'co_ppm' in perf and perf['co_ppm'] is not None:
+                f.write(f"Average CO Emissions: {perf['co_ppm']['mean']:.0f} ppm\n")
+            if 'co2_pct' in perf and perf['co2_pct'] is not None:
+                f.write(f"Average CO2 Emissions: {perf['co2_pct']['mean']:.1f}%\n")
+            if 'so2_ppm' in perf and perf['so2_ppm'] is not None:
+                f.write(f"Average SO2 Emissions: {perf['so2_ppm']['mean']:.0f} ppm\n")
+            f.write("\n")
             
             # Seasonal analysis
             f.write("SEASONAL PERFORMANCE:\n")
@@ -189,6 +197,12 @@ def print_final_summary(data: pd.DataFrame, analysis: dict, filename: str):
     print(f"   🌡️ Average Steam Temp: {perf['final_steam_temp_F']['mean']:.0f}°F")
     print(f"   🌡️ Average Stack Temp: {perf['stack_temp_F']['mean']:.0f}°F")
     print(f"   💨 Average NOx: {perf['total_nox_lb_hr']['mean']:.1f} lb/hr")
+    if 'co_ppm' in data.columns:
+        print(f"   💨 Average CO: {data['co_ppm'].mean():.0f} ppm")
+    if 'co2_pct' in data.columns:
+        print(f"   💨 Average CO2: {data['co2_pct'].mean():.1f}%")
+    if 'so2_ppm' in data.columns:
+        print(f"   💨 Average SO2: {data['so2_ppm'].mean():.0f} ppm")
     
     print(f"\n🔬 INCLUDED DATA CATEGORIES:")
     print(f"   ✅ Variable load operation (45-100% capacity)")
@@ -208,7 +222,7 @@ def print_final_summary(data: pd.DataFrame, analysis: dict, filename: str):
     print(f"   ✅ Complete fouling factors for all tube sections")
     print(f"   ✅ All temperatures (gas/water in/out for each section)")
     print(f"   ✅ All flow rates (coal, air, steam, flue gas)")
-    print(f"   ✅ Complete stack gas analysis (NOx, O2, efficiency)")
+    print(f"   ✅ Complete stack gas analysis (NOx, CO, CO2, H2O, SO2, O2, efficiency)")
     print(f"   ✅ System performance metrics")
     
     print(f"\n🎯 DATA APPLICATIONS:")
@@ -228,7 +242,7 @@ def print_final_summary(data: pd.DataFrame, analysis: dict, filename: str):
         'Time & Conditions': [col for col in data.columns if any(x in col for x in ['timestamp', 'year', 'month', 'day', 'hour', 'season', 'ambient'])],
         'Operating Parameters': [col for col in data.columns if any(x in col for x in ['load_factor', 'coal_rate', 'air_flow', 'fuel_input'])],
         'Coal Properties': [col for col in data.columns if col.startswith('coal_')],
-        'Combustion Results': [col for col in data.columns if any(x in col for x in ['nox', 'excess_o2', 'combustion_efficiency', 'flame_temp'])],
+        'Combustion Results': [col for col in data.columns if any(x in col for x in ['nox', 'excess_o2', 'combustion_efficiency', 'flame_temp', 'co_ppm', 'co2_pct', 'h2o_pct', 'so2_ppm'])],
         'System Performance': [col for col in data.columns if any(x in col for x in ['system_efficiency', 'steam_temp', 'stack_temp', 'heat_absorbed', 'steam_production'])],
         'Fouling Factors': [col for col in data.columns if 'fouling' in col],
         'Section Temperatures': [col for col in data.columns if any(x in col for x in ['_gas_temp_', '_water_temp_'])],
@@ -261,10 +275,20 @@ def show_data_sample(data: pd.DataFrame):
         'total_nox_lb_hr', 'soot_blowing_active'
     ]
     
-    # Add a fouling column if available
+    # Add stack gas components if available
+    if 'co_ppm' in data.columns:
+        key_columns.append('co_ppm')
+    if 'co2_pct' in data.columns:
+        key_columns.append('co2_pct')
+    
+    # Add a fouling column and section cleaning indicator if available
     fouling_cols = [col for col in data.columns if 'fouling_gas_avg' in col]
     if fouling_cols:
         key_columns.append(fouling_cols[0])
+    
+    section_cleaning_cols = [col for col in data.columns if 'soot_blowing_active' in col and col != 'soot_blowing_active']
+    if section_cleaning_cols:
+        key_columns.append(section_cleaning_cols[0])
     
     sample_data = data[key_columns].head()
     print(sample_data.to_string(index=False))
