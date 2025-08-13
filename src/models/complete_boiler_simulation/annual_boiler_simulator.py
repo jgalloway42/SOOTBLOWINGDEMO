@@ -471,9 +471,15 @@ class AnnualBoilerSimulator:
             # Solution status
             'solution_converged': solution_converged,
             
-            # Soot blowing status
+            # Soot blowing status - overall
             'soot_blowing_active': any(action['action'] for action in soot_blowing_actions.values()),
             'sections_cleaned_count': sum(1 for action in soot_blowing_actions.values() if action['action'])
+        }
+        
+        # Add individual section soot blowing indicators
+        for section_name in self.boiler.sections.keys():
+            operation_data[f'{section_name}_soot_blowing_active'] = soot_blowing_actions[section_name]['action']
+            operation_data[f'{section_name}_cleaning_effectiveness'] = soot_blowing_actions[section_name]['effectiveness']
         }
         
         # Add fouling factors for each section
@@ -528,7 +534,7 @@ class AnnualBoilerSimulator:
             
             f.write("OPERATIONAL PARAMETERS:\n")
             f.write(f"- Load Range: 45-100% of maximum capacity\n")
-            f.write(f"- Recording Interval: Every 4 hours\n")
+            f.write(f"- Recording Interval: Every {save_interval_hours} hours\n")
             f.write(f"- Maximum Capacity: 100 MMBtu/hr\n")
             f.write(f"- Location: Massachusetts, USA\n\n")
             
@@ -568,7 +574,7 @@ def main():
     print("\n🔄 Generating annual operation dataset...")
     annual_df = simulator.generate_annual_data(
         hours_per_day=24,  # Continuous operation
-        save_interval_hours=1  # Record every 4 hours
+        save_interval_hours=4  # Record every 4 hours
     )
     
     # Display dataset summary
@@ -609,6 +615,7 @@ def main():
     print(f"   ✓ Massachusetts seasonal weather patterns")
     print(f"   ✓ Coal quality variations (4 different grades)")
     print(f"   ✓ Scheduled soot blowing cycles for all sections")
+    print(f"   ✓ Individual section soot blowing indicators")
     print(f"   ✓ Complete fouling factors for all tube sections")
     print(f"   ✓ All temperatures (gas/water in/out for each section)")
     print(f"   ✓ All flow rates (coal, air, steam, flue gas)")
@@ -620,7 +627,7 @@ def main():
     key_columns = [
         'timestamp', 'load_factor', 'ambient_temp_F', 'coal_quality',
         'system_efficiency', 'stack_temp_F', 'total_nox_lb_hr', 'excess_o2_pct',
-        'soot_blowing_active', 'furnace_walls_fouling_gas_avg'
+        'soot_blowing_active', 'furnace_walls_soot_blowing_active', 'furnace_walls_fouling_gas_avg'
     ]
     
     sample_data = annual_df[key_columns].head(10)
