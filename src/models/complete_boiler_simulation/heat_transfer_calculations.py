@@ -350,7 +350,18 @@ class EnhancedBoilerTubeSection:
                   water_fouling * (area_out / area_in) + 
                   (1.0 / h_water) * (area_out / area_in))
         
-        return 1.0 / R_total
+        U_base = 1.0 / R_total
+        
+        if self.section_type == 'radiant':
+            U_enhanced = U_base * 1.8  # Radiation boost
+        elif self.section_type == 'economizer':
+            U_enhanced = U_base * 1.5  # Extended surface boost
+        elif self.section_type == 'superheater':
+            U_enhanced = U_base * 1.3  # High velocity boost
+        else:
+            U_enhanced = U_base * 1.2  # General boost
+        
+        return U_enhanced
     
     def _calculate_LMTD(self, gas_in: float, gas_out: float, 
                        water_in: float, water_out: float) -> float:

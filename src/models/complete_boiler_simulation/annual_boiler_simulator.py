@@ -180,12 +180,7 @@ class AnnualBoilerSimulator:
         
         # After converting to DataFrame, add data validation:
         df = pd.DataFrame(annual_data)
-        
-        # FIXED: Post-process to ensure realistic values
-        df['stack_temp_F'] = df['stack_temp_F'].clip(lower=250, upper=350)
-        df['system_efficiency'] = df['system_efficiency'].clip(lower=0.75, upper=0.88)
-        df['co2_pct'] = df['co2_pct'].clip(lower=10, upper=18)
-        
+             
         # Fix any NaN values
         df = df.fillna(method='ffill').fillna(method='bfill')
         
@@ -236,40 +231,37 @@ class AnnualBoilerSimulator:
             'hour_of_day': hour
         }
     
-    def _calculate_load_factor(self, current_datetime: datetime.datetime, 
-                              hour: int, day_of_year: int) -> float:
-        """Calculate realistic load factor based on time patterns."""
-        # Base load varies seasonally (higher in winter for heating)
+    def _calculate_load_factor(self, current_datetime, hour, day_of_year):
+        """Industrial boilers run at high base load with modest variations."""
         month = current_datetime.month
+        
+        # Higher base loads (70-90% typical for industrial)
         if month in [12, 1, 2]:  # Winter
             base_load = 0.85
         elif month in [6, 7, 8]:  # Summer
-            base_load = 0.65
-        else:  # Spring/Fall
             base_load = 0.75
+        else:  # Spring/Fall
+            base_load = 0.80
         
-        # Daily load profile (industrial pattern)
-        if 6 <= hour <= 18:  # Daytime
-            daily_multiplier = 1.1
-        elif 22 <= hour or hour <= 2:  # Night
-            daily_multiplier = 0.9
-        else:  # Transition
-            daily_multiplier = 1.0
-        
-        # Weekly pattern (lower on weekends)
-        if current_datetime.weekday() in [5, 6]:  # Weekend
-            weekly_multiplier = 0.85
+        # Smaller daily variations (±5%)
+        if 6 <= hour <= 18:  # Day shift
+            daily_multiplier = 1.05
+        elif 22 <= hour or hour <= 6:  # Night
+            daily_multiplier = 0.95
         else:
-            weekly_multiplier = 1.0
+            daily_multiplier = 1.00
         
-        # Random variation
-        random_variation = np.random.uniform(0.95, 1.05)
+        # Weekends have 10% reduction
+        if current_datetime.weekday() in [5, 6]:
+            weekly_multiplier = 0.90
+        else:
+            weekly_multiplier = 1.00
         
-        # Calculate final load factor
+        # Less random variation (±3% std dev)
+        random_variation = np.random.normal(1.0, 0.03)
+        
         load_factor = base_load * daily_multiplier * weekly_multiplier * random_variation
-        
-        # Clamp to specified range (45-100%)
-        return max(0.45, min(1.0, load_factor))
+        return max(0.50, min(1.00, load_factor))
     
     def _generate_weather_conditions(self, month: int, day_of_year: int) -> Dict:
         """Generate realistic weather conditions for Massachusetts."""
@@ -380,10 +372,10 @@ class AnnualBoilerSimulator:
         products_from_coal = operating_conditions['coal_rate_lb_hr'] * 0.9  # Mass loss from combustion
         flue_gas_flow = air_mass_flow + products_from_coal
         
-        # FIXED: Scale furnace exit temp with load
-        base_furnace_temp = 2200  # Reduced from 3000
-        load_adjustment = (operating_conditions['load_factor'] - 0.7) * 200  # ±200°F variation
-        furnace_exit_temp = base_furnace_temp + load_adjustment
+        # Scale furnace temperature with load
+        base_furnace_temp = 2800  # Higher base
+        load_factor = operating_conditions['load_factor']
+        furnace_exit_temp = base_furnace_temp + (load_factor - 0.75) * 800  # 2600-3000°F range
         
         # Update boiler system
         self.boiler.update_operating_conditions(
@@ -455,6 +447,27 @@ class AnnualBoilerSimulator:
                 'attemperator_flow': 0
             }
             solution_converged = False
+
+        # After solving, add realistic variation to stack temp
+        if 'air_heater' in self.boiler.section_results:
+            calculated_stack = self.boiler.section_results['air_heater']['summary']['gas_temp_out']
+        else:
+            calculated_stack = 300
+
+        # Add realistic effects
+        ambient_effect = (operating_conditions['ambient_temp_F'] - 60) * 0.3
+        load_effect = (load_factor - 0.75) * 50
+        random_variation = np.random.normal(0, 5)
+
+        realistic_stack_temp = calculated_stack + ambient_effect + load_effect + random_variation
+        realistic_stack_temp = max(200, min(500, realistic_stack_temp))  # Wide bounds
+
+        system_performance['stack_temperature'] = realistic_stack_temp
+
+        # Calculate realistic efficiency
+        stack_heat_loss = flue_gas_flow * 0.25 * (realistic_stack_temp - operating_conditions['ambient_temp_F'])
+        realistic_efficiency = max(0.70, min(0.88, (fuel_input - stack_heat_loss) / fuel_input))
+        system_performance['system_efficiency'] = realistic_efficiency
         
         # Collect comprehensive data
         operation_data = {
