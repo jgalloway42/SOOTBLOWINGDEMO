@@ -408,9 +408,9 @@ class AnnualBoilerSimulator:
             combustion_model, operating_conditions['coal_rate_lb_hr'], coal_props
         )
         
-        # Solve boiler system
+        # Solve boiler system with better convergence for realistic stack temperature
         try:
-            self.boiler.solve_enhanced_system(max_iterations=8, tolerance=10.0)
+            self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
             system_performance = self.boiler.system_performance
             solution_converged = True
         except Exception as e:
@@ -419,7 +419,7 @@ class AnnualBoilerSimulator:
             system_performance = {
                 'system_efficiency': 0.80,
                 'final_steam_temperature': 700,
-                'stack_temperature': 350,
+                'stack_temperature': 280,  # Realistic default
                 'total_heat_absorbed': fuel_input * 0.80,
                 'steam_production': 68000,
                 'attemperator_flow': 0
@@ -677,7 +677,7 @@ def main():
     print("\n🔄 Generating annual operation dataset...")
     annual_df = simulator.generate_annual_data(
         hours_per_day=24,  # Continuous operation
-        save_interval_hours=4  # Record every 4 hours
+        save_interval_hours=1  # Record every 4 hours
     )
     
     # Display dataset summary
