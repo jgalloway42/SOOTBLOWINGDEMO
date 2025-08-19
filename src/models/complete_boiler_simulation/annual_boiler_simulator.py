@@ -1,3 +1,170 @@
+#!/usr/bin/env python3
+"""
+Annual Boiler Operation Simulator - Enhanced with IAPWS Integration
+
+This module generates comprehensive annual boiler operation data with:
+- IAPWS-97 steam properties for accurate efficiency calculations
+- Containerboard mill production patterns
+- Enhanced logging and file organization
+- Realistic fouling progression and soot blowing optimization
+
+MAJOR IMPROVEMENTS:
+- IAPWS integration for industry-standard steam properties
+- Fixed efficiency calculations (target: 75-88% vs previous 47%)
+- Enhanced logging to logs/simulation/ directory
+- Clean file organization to data/generated/
+- Dead code removed for professional handoff
+
+Author: Enhanced Boiler Modeling System
+Version: 8.0 - IAPWS Integration with Clean Architecture
+"""
+
+import numpy as np
+import pandas as pd
+import datetime
+import logging
+from typing import Dict, List, Tuple, Optional
+from pathlib import Path
+import random
+
+# Import enhanced modules with IAPWS
+from boiler_system import EnhancedCompleteBoilerSystem
+from coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
+from thermodynamic_properties import PropertyCalculator
+
+# Set up enhanced logging
+log_dir = Path("logs/simulation")
+log_dir.mkdir(parents=True, exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Create file handler for simulation logs
+sim_log_file = log_dir / "annual_simulation.log"
+file_handler = logging.FileHandler(sim_log_file)
+file_handler.setLevel(logging.DEBUG)
+
+# Console handler for progress updates
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# Formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+# Create data directories
+data_dir = Path("data/generated/annual_datasets")
+data_dir.mkdir(parents=True, exist_ok=True)
+
+metadata_dir = Path("outputs/metadata")
+metadata_dir.mkdir(parents=True, exist_ok=True)
+
+
+class AnnualBoilerSimulator:
+    """Enhanced annual boiler simulator with IAPWS integration and containerboard mill patterns."""
+    
+    def __init__(self, start_date: str = "2024-01-01"):
+        """Initialize the enhanced annual boiler simulator."""
+        self.start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+        self.end_date = self.start_date + datetime.timedelta(days=365)
+        
+        # Initialize enhanced boiler system with IAPWS
+        self.boiler = EnhancedCompleteBoilerSystem(
+            fuel_input=100e6,
+            flue_gas_mass_flow=84000,
+            furnace_exit_temp=2800,  # Higher initial for better heat transfer
+            base_fouling_multiplier=0.5
+        )
+            
+        self.fouling_integrator = CombustionFoulingIntegrator()
+        
+        # Soot blowing schedule configuration (realistic frequencies in hours)
+        self.soot_blowing_schedule = {
+            'furnace_walls': 8,          # Every 8 hours (3x per day)
+            'generating_bank': 12,       # Every 12 hours (2x per day)
+            'superheater_primary': 16,   # Every 16 hours (1.5x per day)
+            'superheater_secondary': 24, # Every 24 hours (1x per day)
+            'economizer_primary': 48,    # Every 48 hours (every 2 days)
+            'economizer_secondary': 72,  # Every 72 hours (every 3 days)
+            'air_heater': 168           # Every 168 hours (every 7 days)
+        }
+        
+        # Track last cleaning dates
+        self.last_cleaned = {section: self.start_date for section in self.soot_blowing_schedule.keys()}
+        
+        # Massachusetts weather data patterns
+        self.ma_weather_patterns = self._initialize_ma_weather()
+        
+        # Coal quality variations
+        self.coal_quality_profiles = self._initialize_coal_profiles()
+        
+        # Load factor tracking for ramp rate limiting
+        self.previous_load_factor = 0.65  # Start at baseline
+        
+        # Statistics tracking
+        self.simulation_stats = {
+            'total_hours': 0,
+            'solver_failures': 0,
+            'efficiency_warnings': 0,
+            'temperature_warnings': 0
+        }
+        
+        logger.info("Enhanced Annual Boiler Simulator initialized")
+        logger.info(f"  Simulation period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}")
+        logger.info(f"  Operating model: Containerboard mill with cogeneration")
+        logger.info(f"  Steam properties: IAPWS-97 standard")
+        logger.info(f"  Target efficiency: 75-88% (vs previous 47%)")
+    
+    def _initialize_ma_weather(self) -> Dict:
+        """Initialize Massachusetts weather patterns by month."""
+        return {
+            1: {'temp_avg': 30, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
+            2: {'temp_avg': 35, 'temp_range': 25, 'humidity_avg': 62, 'humidity_range': 20},
+            3: {'temp_avg': 45, 'temp_range': 25, 'humidity_avg': 60, 'humidity_range': 20},
+            4: {'temp_avg': 55, 'temp_range': 25, 'humidity_avg': 58, 'humidity_range': 20},
+            5: {'temp_avg': 65, 'temp_range': 25, 'humidity_avg': 62, 'humidity_range': 20},
+            6: {'temp_avg': 75, 'temp_range': 20, 'humidity_avg': 68, 'humidity_range': 15},
+            7: {'temp_avg': 80, 'temp_range': 20, 'humidity_avg': 70, 'humidity_range': 15},
+            8: {'temp_avg': 78, 'temp_range': 20, 'humidity_avg': 72, 'humidity_range': 15},
+            9: {'temp_avg': 70, 'temp_range': 20, 'humidity_avg': 68, 'humidity_range': 15},
+            10: {'temp_avg': 60, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
+            11: {'temp_avg': 48, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
+            12: {'temp_avg': 35, 'temp_range': 25, 'humidity_avg': 68, 'humidity_range': 20}
+        }
+    
+    def _initialize_coal_profiles(self) -> Dict:
+        """Initialize different coal quality profiles."""
+        return {
+            'high_quality': {
+                'carbon': 75.0, 'volatile_matter': 32.0, 'fixed_carbon': 58.0,
+                'sulfur': 0.8, 'ash': 7.0, 'moisture': 2.0,
+                'heating_value': 13000,
+                'description': 'high_quality'
+            },
+            'medium_quality': {
+                'carbon': 72.0, 'volatile_matter': 28.0, 'fixed_carbon': 55.0,
+                'sulfur': 1.2, 'ash': 8.5, 'moisture': 3.0,
+                'heating_value': 12000,
+                'description': 'medium_quality'
+            },
+            'low_quality': {
+                'carbon': 68.0, 'volatile_matter': 25.0, 'fixed_carbon': 50.0,
+                'sulfur': 2.0, 'ash': 12.0, 'moisture': 5.0,
+                'heating_value': 11000,
+                'description': 'low_quality'
+            },
+            'waste_coal': {
+                'carbon': 65.0, 'volatile_matter': 22.0, 'fixed_carbon': 45.0,
+                'sulfur': 2.5, 'ash': 15.0, 'moisture': 6.0,
+                'heating_value': 10000,
+                'description': 'waste_coal'
+            }
+        }
+    
     def generate_annual_data(self, hours_per_day: int = 24, save_interval_hours: int = 1) -> pd.DataFrame:
         """
         Generate comprehensive annual operation data with IAPWS-based efficiency calculations.
@@ -605,6 +772,9 @@
         h2o_vol_fraction = h2o_pct / 100
         h2o_lb_hr = h2o_vol_fraction * flue_gas_rate * 18 / 29
         
+        so2_vol_fraction = so2_ppm / 1e6
+        so2_lb_hr = so2_vol_fraction * flue_gas_rate * 64 / 29
+        
         return {
             'co_ppm': co_ppm,
             'co2_pct': co2_pct,
@@ -847,171 +1017,4 @@ if __name__ == "__main__":
     print(f"   ✅ Comprehensive logging for troubleshooting")
     print(f"   ✅ Clean codebase with dead code removed")
     print(f"   ✅ Containerboard mill production patterns")
-    print(f"   ✅ Ready for commercial demo with credible physics")#!/usr/bin/env python3
-"""
-Annual Boiler Operation Simulator - Enhanced with IAPWS Integration
-
-This module generates comprehensive annual boiler operation data with:
-- IAPWS-97 steam properties for accurate efficiency calculations
-- Containerboard mill production patterns
-- Enhanced logging and file organization
-- Realistic fouling progression and soot blowing optimization
-
-MAJOR IMPROVEMENTS:
-- IAPWS integration for industry-standard steam properties
-- Fixed efficiency calculations (target: 75-88% vs previous 47%)
-- Enhanced logging to logs/simulation/ directory
-- Clean file organization to data/generated/
-- Dead code removed for professional handoff
-
-Author: Enhanced Boiler Modeling System
-Version: 8.0 - IAPWS Integration with Clean Architecture
-"""
-
-import numpy as np
-import pandas as pd
-import datetime
-import logging
-from typing import Dict, List, Tuple, Optional
-from pathlib import Path
-import random
-
-# Import enhanced modules with IAPWS
-from boiler_system import EnhancedCompleteBoilerSystem
-from coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
-from thermodynamic_properties import PropertyCalculator
-
-# Set up enhanced logging
-log_dir = Path("logs/simulation")
-log_dir.mkdir(parents=True, exist_ok=True)
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# Create file handler for simulation logs
-sim_log_file = log_dir / "annual_simulation.log"
-file_handler = logging.FileHandler(sim_log_file)
-file_handler.setLevel(logging.DEBUG)
-
-# Console handler for progress updates
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.INFO)
-
-# Formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-file_handler.setFormatter(formatter)
-console_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
-
-# Create data directories
-data_dir = Path("data/generated/annual_datasets")
-data_dir.mkdir(parents=True, exist_ok=True)
-
-metadata_dir = Path("outputs/metadata")
-metadata_dir.mkdir(parents=True, exist_ok=True)
-
-
-class AnnualBoilerSimulator:
-    """Enhanced annual boiler simulator with IAPWS integration and containerboard mill patterns."""
-    
-    def __init__(self, start_date: str = "2024-01-01"):
-        """Initialize the enhanced annual boiler simulator."""
-        self.start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        self.end_date = self.start_date + datetime.timedelta(days=365)
-        
-        # Initialize enhanced boiler system with IAPWS
-        self.boiler = EnhancedCompleteBoilerSystem(
-            fuel_input=100e6,
-            flue_gas_mass_flow=84000,
-            furnace_exit_temp=2800,  # Higher initial for better heat transfer
-            base_fouling_multiplier=0.5
-        )
-            
-        self.fouling_integrator = CombustionFoulingIntegrator()
-        
-        # Soot blowing schedule configuration (realistic frequencies in hours)
-        self.soot_blowing_schedule = {
-            'furnace_walls': 8,          # Every 8 hours (3x per day)
-            'generating_bank': 12,       # Every 12 hours (2x per day)
-            'superheater_primary': 16,   # Every 16 hours (1.5x per day)
-            'superheater_secondary': 24, # Every 24 hours (1x per day)
-            'economizer_primary': 48,    # Every 48 hours (every 2 days)
-            'economizer_secondary': 72,  # Every 72 hours (every 3 days)
-            'air_heater': 168           # Every 168 hours (every 7 days)
-        }
-        
-        # Track last cleaning dates
-        self.last_cleaned = {section: self.start_date for section in self.soot_blowing_schedule.keys()}
-        
-        # Massachusetts weather data patterns
-        self.ma_weather_patterns = self._initialize_ma_weather()
-        
-        # Coal quality variations
-        self.coal_quality_profiles = self._initialize_coal_profiles()
-        
-        # Load factor tracking for ramp rate limiting
-        self.previous_load_factor = 0.65  # Start at baseline
-        
-        # Statistics tracking
-        self.simulation_stats = {
-            'total_hours': 0,
-            'solver_failures': 0,
-            'efficiency_warnings': 0,
-            'temperature_warnings': 0
-        }
-        
-        logger.info("Enhanced Annual Boiler Simulator initialized")
-        logger.info(f"  Simulation period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}")
-        logger.info(f"  Operating model: Containerboard mill with cogeneration")
-        logger.info(f"  Steam properties: IAPWS-97 standard")
-        logger.info(f"  Target efficiency: 75-88% (vs previous 47%)")
-    
-    def _initialize_ma_weather(self) -> Dict:
-        """Initialize Massachusetts weather patterns by month."""
-        return {
-            1: {'temp_avg': 30, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
-            2: {'temp_avg': 35, 'temp_range': 25, 'humidity_avg': 62, 'humidity_range': 20},
-            3: {'temp_avg': 45, 'temp_range': 25, 'humidity_avg': 60, 'humidity_range': 20},
-            4: {'temp_avg': 55, 'temp_range': 25, 'humidity_avg': 58, 'humidity_range': 20},
-            5: {'temp_avg': 65, 'temp_range': 25, 'humidity_avg': 62, 'humidity_range': 20},
-            6: {'temp_avg': 75, 'temp_range': 20, 'humidity_avg': 68, 'humidity_range': 15},
-            7: {'temp_avg': 80, 'temp_range': 20, 'humidity_avg': 70, 'humidity_range': 15},
-            8: {'temp_avg': 78, 'temp_range': 20, 'humidity_avg': 72, 'humidity_range': 15},
-            9: {'temp_avg': 70, 'temp_range': 20, 'humidity_avg': 68, 'humidity_range': 15},
-            10: {'temp_avg': 60, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
-            11: {'temp_avg': 48, 'temp_range': 25, 'humidity_avg': 65, 'humidity_range': 20},
-            12: {'temp_avg': 35, 'temp_range': 25, 'humidity_avg': 68, 'humidity_range': 20}
-        }
-    
-    def _initialize_coal_profiles(self) -> Dict:
-        """Initialize different coal quality profiles."""
-        return {
-            'high_quality': {
-                'carbon': 75.0, 'volatile_matter': 32.0, 'fixed_carbon': 58.0,
-                'sulfur': 0.8, 'ash': 7.0, 'moisture': 2.0,
-                'heating_value': 13000,
-                'description': 'high_quality'
-            },
-            'medium_quality': {
-                'carbon': 72.0, 'volatile_matter': 28.0, 'fixed_carbon': 55.0,
-                'sulfur': 1.2, 'ash': 8.5, 'moisture': 3.0,
-                'heating_value': 12000,
-                'description': 'medium_quality'
-            },
-            'low_quality': {
-                'carbon': 68.0, 'volatile_matter': 25.0, 'fixed_carbon': 50.0,
-                'sulfur': 2.0, 'ash': 12.0, 'moisture': 5.0,
-                'heating_value': 11000,
-                'description': 'low_quality'
-            },
-            'waste_coal': {
-                'carbon': 65.0, 'volatile_matter': 22.0, 'fixed_carbon': 45.0,
-                'sulfur': 2.5, 'ash': 15.0, 'moisture': 6.0,
-                'heating_value': 10000,
-                'description': 'waste_coal'
-            }
-        }
-    
-    def generate_
+    print(f"   ✅ Ready for commercial demo with credible physics")
