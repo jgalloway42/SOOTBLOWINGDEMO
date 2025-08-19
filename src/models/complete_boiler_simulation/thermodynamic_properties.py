@@ -1,205 +1,362 @@
 #!/usr/bin/env python3
 """
-Thermodynamic Property Calculations - FIXED VERSION 2
+Enhanced Thermodynamic Property Calculations - IAPWS + Thermo Integration
 
-This module contains property calculation utilities using the thermo library
-for accurate steam, water, and flue gas properties with proper thermo library usage.
+This module provides accurate property calculations using:
+- IAPWS-97 for water/steam properties (industry standard)
+- Thermo library for flue gas mixtures and combustion products
+- Proper logging and error handling
 
 Classes:
-    SteamProperties: Dataclass for water/steam properties
-    GasProperties: Dataclass for flue gas properties
-    PropertyCalculator: Main property calculation class
+    SteamProperties: Dataclass for water/steam properties  
+    GasProperties: Dataclass for flue gas mixture properties
+    PropertyCalculator: Main property calculation class with dual library support
 
 Dependencies:
-    - thermo: Comprehensive thermodynamic library
-    - dataclasses: For structured data
-    - typing: Type hints
-    - numpy: Numerical calculations
+    - iapws: Industry-standard steam properties (IAPWS-97)
+    - thermo: Chemical mixture properties for flue gas
+    - logging: Comprehensive logging support
 
 Author: Enhanced Boiler Modeling System
-Version: 5.1 - Fixed Thermo Library Usage
+Version: 6.0 - IAPWS Integration with Enhanced Logging
 """
 
 import numpy as np
+import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List
+from pathlib import Path
+
+# Create logs directory if it doesn't exist
+log_dir = Path("logs/simulation")
+log_dir.mkdir(parents=True, exist_ok=True)
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Create file handler for property calculations
+prop_log_file = log_dir / "property_calculations.log"
+file_handler = logging.FileHandler(prop_log_file)
+file_handler.setLevel(logging.DEBUG)
+
+# Create console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.WARNING)
+
+# Create formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers to logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+# Library imports with proper error handling
+try:
+    from iapws import IAPWS97
+    IAPWS_AVAILABLE = True
+    logger.info("IAPWS library loaded successfully for steam properties")
+except ImportError:
+    IAPWS_AVAILABLE = False
+    logger.warning("IAPWS library not available - using correlations for steam")
 
 try:
-    from thermo.chemical import Chemical
     from thermo.mixture import Mixture
+    from thermo.chemical import Chemical
     THERMO_AVAILABLE = True
+    logger.info("Thermo library loaded successfully for gas mixtures")
 except ImportError:
-    print("Warning: Thermo library not available, using correlations only")
     THERMO_AVAILABLE = False
+    logger.warning("Thermo library not available - using correlations for gas")
 
 # Unit conversion constants
 F_TO_K = lambda f: (f - 32) * 5/9 + 273.15
 K_TO_F = lambda k: (k - 273.15) * 9/5 + 32
 PSIA_TO_PA = 6894.757
 PA_TO_PSIA = 1/6894.757
-BTU_LBM_F_TO_J_KG_K = 4186.8
-J_KG_K_TO_BTU_LBM_F = 1/4186.8
-KG_M3_TO_LBM_FT3 = 0.062428
-LBM_FT3_TO_KG_M3 = 1/0.062428
-W_M_K_TO_BTU_HR_FT_F = 0.577789
-PA_S_TO_LBM_HR_FT = 2419.09
-J_KG_TO_BTU_LBM = 0.000429923
+J_KG_TO_BTU_LB = 0.000429923
+KG_M3_TO_LB_FT3 = 0.062428
+W_MK_TO_BTU_HRFTF = 0.577789
+PA_S_TO_LB_HRFT = 2419.09
 
 
 @dataclass
 class SteamProperties:
-    """Comprehensive water/steam thermodynamic properties dataclass."""
-    temperature: float  # °F
-    pressure: float  # psia
-    cp: float  # Btu/lbm-°F
-    density: float  # lbm/ft³
-    viscosity: float  # lbm/hr-ft
+    """Enhanced steam/water properties using IAPWS-97 standard."""
+    temperature: float      # °F
+    pressure: float        # psia
+    density: float         # lb/ft³
+    cp: float             # Btu/lb-°F
+    viscosity: float      # lb/hr-ft
     thermal_conductivity: float  # Btu/hr-ft-°F
-    saturation_temp: float  # °F
-    superheat: float  # °F
-    phase: str  # 'liquid', 'saturated', 'superheated_steam'
-    prandtl: float
-    enthalpy: float  # Btu/lbm
-    entropy: float  # Btu/lbm-°R
-    quality: Optional[float]  # Steam quality (0-1)
+    enthalpy: float       # Btu/lb (IAPWS reference: liquid water at 32°F = 0)
+    entropy: float        # Btu/lb-°R
+    saturation_temp: float # °F
+    superheat: float      # °F
+    phase: str           # 'liquid', 'saturated', 'superheated_steam'
+    quality: Optional[float]  # Steam quality (0-1) for two-phase
+    prandtl: float       # Dimensionless
 
 
-@dataclass
+@dataclass  
 class GasProperties:
-    """Flue gas mixture properties dataclass using thermo library."""
-    temperature: float  # °F
-    cp: float  # Btu/lbm-°F
-    density: float  # lbm/ft³
-    viscosity: float  # lbm/hr-ft
+    """Enhanced flue gas mixture properties using Thermo library."""
+    temperature: float    # °F
+    pressure: float      # psia
+    density: float       # lb/ft³
+    cp: float           # Btu/lb-°F
+    viscosity: float    # lb/hr-ft
     thermal_conductivity: float  # Btu/hr-ft-°F
-    prandtl: float
-    molecular_weight: float  # lb/lbmol
+    molecular_weight: float     # lb/lbmol
+    composition: Dict[str, float]  # Mole fractions
+    prandtl: float      # Dimensionless
 
 
 class PropertyCalculator:
-    """Steam and gas property calculation utilities using thermo library."""
+    """Enhanced property calculator with IAPWS for steam and Thermo for gas mixtures."""
     
     def __init__(self):
-        """Initialize property calculator with thermo objects."""
+        """Initialize with both IAPWS and Thermo capabilities."""
+        self.iapws_available = IAPWS_AVAILABLE
         self.thermo_available = THERMO_AVAILABLE
+        
+        # Statistics for logging
+        self.steam_calculations = 0
+        self.gas_calculations = 0
+        self.iapws_failures = 0
+        self.thermo_failures = 0
+        
+        logger.info(f"PropertyCalculator initialized - IAPWS: {self.iapws_available}, Thermo: {self.thermo_available}")
+    
+    def get_steam_properties(self, temperature: float, pressure: float) -> SteamProperties:
+        """
+        Calculate water/steam properties using IAPWS-97 standard.
+        
+        Args:
+            temperature: Temperature in °F
+            pressure: Pressure in psia
+            
+        Returns:
+            SteamProperties with industry-standard accuracy
+        """
+        self.steam_calculations += 1
+        
+        # Input validation
+        if pressure <= 0 or pressure > 5000:
+            logger.error(f"Invalid pressure: {pressure} psia (must be 0-5000)")
+            raise ValueError(f"Pressure {pressure} psia outside valid range")
+        
+        # Temperature bounds for safety
+        temp_clamped = max(32, min(temperature, 1500))
+        if abs(temp_clamped - temperature) > 5:
+            logger.warning(f"Temperature {temperature:.1f}°F clamped to {temp_clamped:.1f}°F")
+        
+        if self.iapws_available:
+            try:
+                return self._calculate_steam_iapws(temp_clamped, pressure)
+            except Exception as e:
+                self.iapws_failures += 1
+                logger.error(f"IAPWS calculation failed: {e}")
+                return self._calculate_steam_correlations(temp_clamped, pressure)
+        else:
+            return self._calculate_steam_correlations(temp_clamped, pressure)
+    
+    def get_flue_gas_properties(self, temperature: float, composition: Dict[str, float], 
+                              pressure: float = 14.7) -> GasProperties:
+        """
+        Calculate flue gas mixture properties using Thermo library.
+        
+        Args:
+            temperature: Temperature in °F
+            composition: Mole fractions {'N2': 0.75, 'O2': 0.04, 'CO2': 0.12, ...}
+            pressure: Pressure in psia
+            
+        Returns:
+            GasProperties for the specified mixture
+        """
+        self.gas_calculations += 1
+        
+        # Normalize composition
+        total_moles = sum(composition.values())
+        if abs(total_moles - 1.0) > 0.01:
+            logger.warning(f"Gas composition sum {total_moles:.3f}, normalizing to 1.0")
+            composition = {k: v/total_moles for k, v in composition.items()}
+        
+        temp_clamped = max(200, min(temperature, 3500))
+        if abs(temp_clamped - temperature) > 50:
+            logger.warning(f"Gas temperature {temperature:.1f}°F clamped to {temp_clamped:.1f}°F")
         
         if self.thermo_available:
             try:
-                # Create water substance for steam calculations
-                self.water = Chemical('water')
-                print("✓ Thermo library initialized for water properties")
+                return self._calculate_gas_thermo(temp_clamped, composition, pressure)
             except Exception as e:
-                print(f"Warning: Could not initialize thermo water object: {e}")
-                self.water = None
+                self.thermo_failures += 1
+                logger.error(f"Thermo mixture calculation failed: {e}")
+                return self._calculate_gas_correlations(temp_clamped, composition, pressure)
         else:
-            self.water = None
+            return self._calculate_gas_correlations(temp_clamped, composition, pressure)
     
-    def get_steam_properties(self, temperature: float, pressure: float) -> SteamProperties:
-        """Legacy method - calls safe version."""
-        return self.get_steam_properties_safe(temperature, pressure)
+    def create_typical_flue_gas_composition(self, excess_air: float = 0.2, 
+                                          coal_sulfur: float = 1.0) -> Dict[str, float]:
+        """
+        Create typical flue gas composition for coal combustion.
+        
+        Args:
+            excess_air: Fraction excess air (0.2 = 20% excess)
+            coal_sulfur: Coal sulfur content (weight %)
+            
+        Returns:
+            Mole fraction composition dictionary
+        """
+        # Typical coal combustion with excess air
+        base_composition = {
+            'N2': 0.752,    # Nitrogen from air + fuel
+            'O2': 0.035,    # Excess oxygen 
+            'CO2': 0.125,   # Carbon dioxide from coal
+            'H2O': 0.085,   # Water vapor from hydrogen + moisture
+            'SO2': 0.003,   # Sulfur dioxide from coal sulfur
+        }
+        
+        # Adjust for excess air
+        o2_increase = excess_air * 0.21 * 0.1  # Approximate adjustment
+        base_composition['O2'] += o2_increase
+        base_composition['N2'] += excess_air * 0.79 * 0.1
+        
+        # Adjust for sulfur content
+        so2_factor = coal_sulfur / 1.0  # Relative to 1% sulfur baseline
+        base_composition['SO2'] *= so2_factor
+        
+        # Normalize
+        total = sum(base_composition.values())
+        return {k: v/total for k, v in base_composition.items()}
     
-    def get_flue_gas_properties(self, temperature: float, pressure: float = 14.7) -> GasProperties:
-        """Legacy method - calls safe version."""
-        return self.get_flue_gas_properties_safe(temperature, pressure)
-    
-    def get_steam_properties_safe(self, temperature: float, pressure: float) -> SteamProperties:
-        """Calculate water/steam properties with extended temperature range handling."""
-        # Clamp temperature to safe range
-        temp_clamped = max(32, min(temperature, 1500))  # Conservative limit
+    def _calculate_steam_iapws(self, temperature: float, pressure: float) -> SteamProperties:
+        """Calculate steam properties using IAPWS-97."""
+        # Convert to SI units for IAPWS
+        T_K = F_TO_K(temperature)
+        P_Pa = pressure * PSIA_TO_PA
         
-        if abs(temp_clamped - temperature) > 5.0:
-            print(f"Info: Temperature {temperature:.1f}°F adjusted to {temp_clamped:.1f}°F for property calculation")
+        # Create IAPWS97 object
+        steam = IAPWS97(T=T_K, P=P_Pa)
         
-        if pressure < 1 or pressure > 5000:
-            raise ValueError(f"Pressure {pressure} psia outside range (1-5000 psia)")
+        if not steam.status:
+            raise ValueError(f"IAPWS calculation failed for T={temperature}°F, P={pressure} psia")
         
-        # Try thermo library first
-        if self.thermo_available and self.water is not None:
-            try:
-                # Convert to SI units
-                T_K = F_TO_K(temp_clamped)
-                P_Pa = pressure * PSIA_TO_PA
-                
-                # Calculate properties at the given conditions
-                self.water.calculate(T=T_K, P=P_Pa)
-                
-                # Get saturation temperature
-                try:
-                    sat_temp_K = self.water.Tsat(P_Pa)
-                    sat_temp_F = K_TO_F(sat_temp_K)
-                except:
-                    sat_temp_F = self._estimate_saturation_temp(pressure)
-                
-                # Determine phase
-                if temp_clamped > sat_temp_F + 10:
-                    phase = 'superheated_steam'
-                    superheat = temperature - sat_temp_F  # Use original temperature
-                    quality = None
-                elif abs(temp_clamped - sat_temp_F) <= 10:
-                    phase = 'saturated'
-                    superheat = 0
-                    quality = 0.5
-                else:
-                    phase = 'liquid'
-                    superheat = 0
-                    quality = None
-                
-                # Get properties with fallback
-                try:
-                    density = self.water.rho * KG_M3_TO_LBM_FT3 if hasattr(self.water, 'rho') and self.water.rho else self._estimate_water_density(temp_clamped, pressure, phase)
-                    cp = self.water.Cp * J_KG_K_TO_BTU_LBM_F if hasattr(self.water, 'Cp') and self.water.Cp else self._estimate_water_cp(temp_clamped, phase)
-                    viscosity = self.water.mu * PA_S_TO_LBM_HR_FT if hasattr(self.water, 'mu') and self.water.mu else self._estimate_water_viscosity(temp_clamped, phase)
-                    thermal_conductivity = self.water.k * W_M_K_TO_BTU_HR_FT_F if hasattr(self.water, 'k') and self.water.k else self._estimate_water_thermal_conductivity(temp_clamped, phase)
-                    enthalpy = self.water.H * J_KG_TO_BTU_LBM if hasattr(self.water, 'H') and self.water.H else self._estimate_water_enthalpy(temp_clamped, phase)
-                    entropy = self.water.S * J_KG_K_TO_BTU_LBM_F if hasattr(self.water, 'S') and self.water.S else self._estimate_water_entropy(temp_clamped, phase)
-                except:
-                    # Fall back to correlations
-                    density = self._estimate_water_density(temp_clamped, pressure, phase)
-                    cp = self._estimate_water_cp(temp_clamped, phase)
-                    viscosity = self._estimate_water_viscosity(temp_clamped, phase)
-                    thermal_conductivity = self._estimate_water_thermal_conductivity(temp_clamped, phase)
-                    enthalpy = self._estimate_water_enthalpy(temp_clamped, phase)
-                    entropy = self._estimate_water_entropy(temp_clamped, phase)
-                
-                prandtl = cp * viscosity / thermal_conductivity if thermal_conductivity > 0 else 1.0
-                
-            except Exception as e:
-                # Complete fallback to correlations
-                return self._get_steam_properties_correlations(temperature, pressure)
+        # Convert properties back to English units
+        density = steam.rho * KG_M3_TO_LB_FT3  # kg/m³ to lb/ft³
+        cp = steam.cp * J_KG_TO_BTU_LB / (5/9)  # J/kg-K to Btu/lb-°F
+        enthalpy = steam.h * J_KG_TO_BTU_LB  # J/kg to Btu/lb
+        entropy = steam.s * J_KG_TO_BTU_LB / (5/9)  # J/kg-K to Btu/lb-°R
+        
+        # Transport properties (IAPWS has these)
+        try:
+            viscosity = steam.mu * PA_S_TO_LB_HRFT if hasattr(steam, 'mu') else self._estimate_steam_viscosity(temperature)
+            thermal_conductivity = steam.k * W_MK_TO_BTU_HRFTF if hasattr(steam, 'k') else self._estimate_steam_thermal_conductivity(temperature)
+        except:
+            viscosity = self._estimate_steam_viscosity(temperature)
+            thermal_conductivity = self._estimate_steam_thermal_conductivity(temperature)
+        
+        # Phase determination
+        saturation_temp = self._get_saturation_temperature_iapws(pressure)
+        
+        if temperature > saturation_temp + 5:
+            phase = 'superheated_steam'
+            superheat = temperature - saturation_temp
+            quality = None
+        elif abs(temperature - saturation_temp) <= 5:
+            phase = 'saturated'
+            superheat = 0
+            quality = steam.x if hasattr(steam, 'x') else None
         else:
-            # Use correlations only
-            return self._get_steam_properties_correlations(temperature, pressure)
+            phase = 'liquid'
+            superheat = 0
+            quality = None
+        
+        prandtl = cp * viscosity / thermal_conductivity if thermal_conductivity > 0 else 1.0
+        
+        logger.debug(f"IAPWS steam calc: T={temperature}°F, P={pressure} psia, h={enthalpy:.1f} Btu/lb, phase={phase}")
         
         return SteamProperties(
             temperature=temperature,
             pressure=pressure,
-            cp=cp,
             density=density,
+            cp=cp,
             viscosity=viscosity,
             thermal_conductivity=thermal_conductivity,
-            saturation_temp=sat_temp_F,
-            superheat=superheat,
-            phase=phase,
-            prandtl=prandtl,
             enthalpy=enthalpy,
             entropy=entropy,
-            quality=quality
+            saturation_temp=saturation_temp,
+            superheat=superheat,
+            phase=phase,
+            quality=quality,
+            prandtl=prandtl
         )
     
-    def get_flue_gas_properties_safe(self, temperature: float, pressure: float = 14.7) -> GasProperties:
-        """Calculate flue gas properties using correlations (more reliable than thermo mixture)."""
-        # Always use correlations for gas properties - more reliable and faster
-        return self._get_gas_properties_correlations(temperature, pressure)
-    
-    def _get_steam_properties_correlations(self, temperature: float, pressure: float) -> SteamProperties:
-        """Calculate steam properties using engineering correlations only."""
-        sat_temp_F = self._estimate_saturation_temp(pressure)
+    def _calculate_gas_thermo(self, temperature: float, composition: Dict[str, float], 
+                            pressure: float) -> GasProperties:
+        """Calculate gas mixture properties using Thermo library."""
+        # Convert to SI units
+        T_K = F_TO_K(temperature)
+        P_Pa = pressure * PSIA_TO_PA
         
-        if temperature > sat_temp_F + 10:
+        # Create mixture
+        species = list(composition.keys())
+        mole_fractions = list(composition.values())
+        
+        mixture = Mixture(species, zs=mole_fractions, T=T_K, P=P_Pa)
+        
+        # Get properties with unit conversion
+        density = mixture.rho * KG_M3_TO_LB_FT3 if mixture.rho else self._estimate_gas_density(temperature, pressure)
+        cp = mixture.Cp * J_KG_TO_BTU_LB / (5/9) if mixture.Cp else self._estimate_gas_cp(temperature)
+        molecular_weight = mixture.MW  # Already in correct units
+        
+        # Transport properties
+        try:
+            viscosity = mixture.mu * PA_S_TO_LB_HRFT if mixture.mu else self._estimate_gas_viscosity(temperature)
+            thermal_conductivity = mixture.k * W_MK_TO_BTU_HRFTF if mixture.k else self._estimate_gas_thermal_conductivity(temperature)
+        except:
+            viscosity = self._estimate_gas_viscosity(temperature)
+            thermal_conductivity = self._estimate_gas_thermal_conductivity(temperature)
+        
+        prandtl = cp * viscosity / thermal_conductivity if thermal_conductivity > 0 else 0.7
+        
+        logger.debug(f"Thermo gas calc: T={temperature}°F, MW={molecular_weight:.1f}, rho={density:.4f} lb/ft³")
+        
+        return GasProperties(
+            temperature=temperature,
+            pressure=pressure,
+            density=density,
+            cp=cp,
+            viscosity=viscosity,
+            thermal_conductivity=thermal_conductivity,
+            molecular_weight=molecular_weight,
+            composition=composition,
+            prandtl=prandtl
+        )
+    
+    def _get_saturation_temperature_iapws(self, pressure: float) -> float:
+        """Get saturation temperature using IAPWS."""
+        try:
+            P_Pa = pressure * PSIA_TO_PA
+            steam_sat = IAPWS97(P=P_Pa, x=0)  # Saturated liquid
+            return K_TO_F(steam_sat.T)
+        except:
+            return self._estimate_saturation_temperature(pressure)
+    
+    def _calculate_steam_correlations(self, temperature: float, pressure: float) -> SteamProperties:
+        """Fallback steam property correlations."""
+        logger.warning(f"Using steam correlations for T={temperature}°F, P={pressure} psia")
+        
+        saturation_temp = self._estimate_saturation_temperature(pressure)
+        
+        # Phase determination
+        if temperature > saturation_temp + 5:
             phase = 'superheated_steam'
-            superheat = temperature - sat_temp_F
+            superheat = temperature - saturation_temp
             quality = None
-        elif abs(temperature - sat_temp_F) <= 10:
+        elif abs(temperature - saturation_temp) <= 5:
             phase = 'saturated'
             superheat = 0
             quality = 0.5
@@ -208,153 +365,189 @@ class PropertyCalculator:
             superheat = 0
             quality = None
         
-        density = self._estimate_water_density(temperature, pressure, phase)
-        cp = self._estimate_water_cp(temperature, phase)
-        viscosity = self._estimate_water_viscosity(temperature, phase)
-        thermal_conductivity = self._estimate_water_thermal_conductivity(temperature, phase)
-        enthalpy = self._estimate_water_enthalpy(temperature, phase)
-        entropy = self._estimate_water_entropy(temperature, phase)
+        # Property correlations
+        density = self._estimate_steam_density(temperature, pressure, phase)
+        cp = self._estimate_steam_cp(temperature, phase)
+        viscosity = self._estimate_steam_viscosity(temperature)
+        thermal_conductivity = self._estimate_steam_thermal_conductivity(temperature)
+        enthalpy = self._estimate_steam_enthalpy(temperature, phase)
+        entropy = self._estimate_steam_entropy(temperature, phase)
         prandtl = cp * viscosity / thermal_conductivity if thermal_conductivity > 0 else 1.0
         
         return SteamProperties(
             temperature=temperature,
             pressure=pressure,
-            cp=cp,
             density=density,
+            cp=cp,
             viscosity=viscosity,
             thermal_conductivity=thermal_conductivity,
-            saturation_temp=sat_temp_F,
-            superheat=superheat,
-            phase=phase,
-            prandtl=prandtl,
             enthalpy=enthalpy,
             entropy=entropy,
-            quality=quality
+            saturation_temp=saturation_temp,
+            superheat=superheat,
+            phase=phase,
+            quality=quality,
+            prandtl=prandtl
         )
     
-    def _get_gas_properties_correlations(self, temperature: float, pressure: float) -> GasProperties:
-        """Calculate gas properties using proven engineering correlations."""
-        # Clamp temperature to reasonable range
-        temp_clamped = max(200, min(temperature, 3500))
+    def _calculate_gas_correlations(self, temperature: float, composition: Dict[str, float], 
+                                  pressure: float) -> GasProperties:
+        """Fallback gas property correlations."""
+        logger.warning(f"Using gas correlations for T={temperature}°F")
         
-        # Use proven correlations for flue gas properties
-        density, cp, viscosity, thermal_conductivity, molecular_weight = self._estimate_gas_properties(temp_clamped, pressure)
+        # Estimate molecular weight from composition
+        mw_dict = {'N2': 28.014, 'O2': 31.998, 'CO2': 44.01, 'H2O': 18.015, 'SO2': 64.066, 'CO': 28.01}
+        molecular_weight = sum(composition.get(species, 0) * mw_dict.get(species, 29) for species in composition)
+        
+        density = self._estimate_gas_density(temperature, pressure, molecular_weight)
+        cp = self._estimate_gas_cp(temperature)
+        viscosity = self._estimate_gas_viscosity(temperature)
+        thermal_conductivity = self._estimate_gas_thermal_conductivity(temperature)
         prandtl = cp * viscosity / thermal_conductivity if thermal_conductivity > 0 else 0.7
         
         return GasProperties(
             temperature=temperature,
-            cp=cp,
+            pressure=pressure,
             density=density,
+            cp=cp,
             viscosity=viscosity,
             thermal_conductivity=thermal_conductivity,
-            prandtl=prandtl,
-            molecular_weight=molecular_weight
+            molecular_weight=molecular_weight,
+            composition=composition,
+            prandtl=prandtl
         )
     
-    def _estimate_saturation_temp(self, pressure: float) -> float:
-        """Estimate saturation temperature using proven correlation."""
-        if pressure <= 0:
+    # Enhanced correlation methods
+    def _estimate_saturation_temperature(self, pressure: float) -> float:
+        """Enhanced saturation temperature correlation."""
+        if pressure <= 1:
             return 32
-        
-        # Enhanced correlation based on steam tables
-        try:
-            if pressure <= 1:
-                return 32
-            elif pressure <= 14.7:
-                return 32 + (pressure - 1) * 13.0
-            elif pressure <= 50:
-                return 212 + (pressure - 14.7) * 3.2
-            elif pressure <= 100:
-                return 212 + 113 + (pressure - 50) * 2.8
-            elif pressure <= 500:
-                return 212 + 113 + 140 + (pressure - 100) * 0.7
-            else:
-                return 212 + 113 + 140 + 280 + (pressure - 500) * 0.3
-        except:
-            return max(32, min(212 + (pressure - 14.7) * 2, 700))
+        elif pressure <= 14.7:
+            return 32 + (pressure - 1) * 13.0  
+        elif pressure <= 100:
+            return 212 + (pressure - 14.7) * 2.4
+        elif pressure <= 500:
+            return 212 + 204 + (pressure - 100) * 0.7
+        else:
+            return 212 + 204 + 280 + (pressure - 500) * 0.3
     
-    def _estimate_water_density(self, temperature: float, pressure: float, phase: str) -> float:
-        """Enhanced water density estimation."""
+    def _estimate_steam_density(self, temperature: float, pressure: float, phase: str) -> float:
+        """Enhanced steam density correlation."""
         if phase == 'superheated_steam':
-            # Ideal gas law for steam
             T_R = temperature + 459.67
-            return max(0.05, pressure / (85.76 * T_R))
-        elif phase == 'saturated':
-            # Saturated steam/liquid density
-            return max(0.5, 62.4 * (1 - 0.0003 * temperature))
-        else:  # liquid
-            # Compressed liquid density
+            return pressure / (85.76 * T_R)  # Ideal gas law for steam
+        elif phase == 'liquid':
             temp_effect = 1 - 0.0003 * (temperature - 32)
             pressure_effect = 1 + 0.000005 * (pressure - 14.7)
-            return max(30.0, 62.4 * temp_effect * pressure_effect)
+            return 62.4 * temp_effect * pressure_effect
+        else:  # saturated
+            return 20.0  # Approximate for two-phase
     
-    def _estimate_water_cp(self, temperature: float, phase: str) -> float:
-        """Enhanced specific heat estimation."""
+    def _estimate_steam_cp(self, temperature: float, phase: str) -> float:
+        """Enhanced steam specific heat correlation."""
         if phase == 'superheated_steam':
-            # Steam specific heat correlation
-            return max(0.4, 0.445 + 0.00005 * max(0, temperature - 500))
-        elif phase == 'saturated':
-            return 1.0
-        else:  # liquid
-            return max(0.9, 1.0 + 0.0001 * (temperature - 32))
+            return 0.445 + 0.00005 * max(0, temperature - 500)
+        elif phase == 'liquid':
+            return 1.0 + 0.0001 * (temperature - 32)
+        else:  # saturated
+            return 1.2
     
-    def _estimate_water_viscosity(self, temperature: float, phase: str) -> float:
-        """Enhanced viscosity estimation."""
+    def _estimate_steam_enthalpy(self, temperature: float, phase: str) -> float:
+        """Enhanced steam enthalpy correlation - CRITICAL for efficiency."""
         if phase == 'superheated_steam':
-            # Steam viscosity correlation
-            return max(0.01, 0.025 + 0.000015 * temperature) * PA_S_TO_LBM_HR_FT
-        elif phase == 'saturated':
-            return 0.6 * PA_S_TO_LBM_HR_FT
-        else:  # liquid
-            # Liquid water viscosity (decreases with temperature)
-            return max(0.1, (2.5 - 0.004 * temperature)) * PA_S_TO_LBM_HR_FT
-    
-    def _estimate_water_thermal_conductivity(self, temperature: float, phase: str) -> float:
-        """Enhanced thermal conductivity estimation."""
-        if phase == 'superheated_steam':
-            return max(0.01, 0.0145 + 0.000025 * temperature)
-        else:
-            return max(0.1, 0.35 + 0.0002 * temperature)
-    
-    def _estimate_water_enthalpy(self, temperature: float, phase: str) -> float:
-        """Enhanced enthalpy estimation."""
-        if phase == 'superheated_steam':
+            # Superheated steam: ~1100-1200 Btu/lb base + superheat
             return 1150 + (temperature - 500) * 0.5
-        elif phase == 'saturated':
-            return 180 + temperature * 0.8
-        else:  # liquid
+        elif phase == 'liquid':
+            # Liquid water: ~0 at 32°F to ~180 at 212°F
             return max(0, temperature - 32)
+        else:  # saturated
+            # Saturated: varies with pressure/temperature
+            return 180 + temperature * 0.8
     
-    def _estimate_water_entropy(self, temperature: float, phase: str) -> float:
-        """Enhanced entropy estimation."""
+    def _estimate_steam_entropy(self, temperature: float, phase: str) -> float:
+        """Enhanced steam entropy correlation."""
         if phase == 'superheated_steam':
             return 1.5 + 0.0002 * max(0, temperature - 500)
-        elif phase == 'saturated':
-            return 0.3 + temperature * 0.002
-        else:  # liquid
+        elif phase == 'liquid':
             return 0.002 * max(temperature, 32)
+        else:  # saturated
+            return 0.3 + temperature * 0.002
     
-    def _estimate_gas_properties(self, temperature: float, pressure: float) -> Tuple[float, float, float, float, float]:
-        """Enhanced gas property estimation using proven correlations."""
-        T_R = temperature + 459.67  # Temperature in Rankine
+    def _estimate_steam_viscosity(self, temperature: float) -> float:
+        """Steam viscosity correlation."""
+        return max(0.01, 0.025 + 0.000015 * temperature) * PA_S_TO_LB_HRFT
+    
+    def _estimate_steam_thermal_conductivity(self, temperature: float) -> float:
+        """Steam thermal conductivity correlation."""
+        return max(0.01, 0.0145 + 0.000025 * temperature)
+    
+    def _estimate_gas_density(self, temperature: float, pressure: float, 
+                            molecular_weight: float = 29.0) -> float:
+        """Gas density using ideal gas law."""
+        T_R = temperature + 459.67
+        R = 1545.35 / molecular_weight  # Gas constant
+        return (pressure * 144) / (R * T_R)  # lb/ft³
+    
+    def _estimate_gas_cp(self, temperature: float) -> float:
+        """Gas specific heat correlation."""
+        return max(0.20, 0.24 + 0.00002 * min(temperature, 3000))
+    
+    def _estimate_gas_viscosity(self, temperature: float) -> float:
+        """Gas viscosity correlation."""
+        T_R = temperature + 459.67
+        return max(0.005, 0.018e-6 * ((T_R / 530) ** 1.5) * 2419.09)
+    
+    def _estimate_gas_thermal_conductivity(self, temperature: float) -> float:
+        """Gas thermal conductivity correlation."""
+        return max(0.005, 0.008 + 0.00003 * min(temperature, 3000))
+    
+    def log_statistics(self):
+        """Log property calculation statistics."""
+        logger.info(f"Property calculation statistics:")
+        logger.info(f"  Steam calculations: {self.steam_calculations}")
+        logger.info(f"  Gas calculations: {self.gas_calculations}")
+        logger.info(f"  IAPWS failures: {self.iapws_failures}")
+        logger.info(f"  Thermo failures: {self.thermo_failures}")
         
-        # Density using ideal gas law with compressibility correction
-        Z = 1.0  # Compressibility factor (close to 1 for combustion gases)
-        density = max(0.001, (pressure * 144) / (53.35 * T_R * Z))  # lbm/ft³
+        if self.steam_calculations > 0:
+            iapws_success_rate = (self.steam_calculations - self.iapws_failures) / self.steam_calculations
+            logger.info(f"  IAPWS success rate: {iapws_success_rate:.1%}")
         
-        # Specific heat - temperature dependent correlation for combustion gases
-        cp = max(0.20, 0.24 + 0.00002 * min(temperature, 3000) + 0.000000003 * (temperature ** 2))
-        
-        # Viscosity - Sutherland's law approximation
-        mu_ref = 0.018e-6  # Reference viscosity at 530°R (Pa·s)
-        T_ref = 530  # Reference temperature (°R)
-        S = 200  # Sutherland constant for air/combustion gases
-        viscosity = max(0.005, mu_ref * ((T_R / T_ref) ** 1.5) * ((T_ref + S) / (T_R + S))) * PA_S_TO_LBM_HR_FT
-        
-        # Thermal conductivity - correlation for combustion gases
-        thermal_conductivity = max(0.005, 0.008 + 0.00003 * min(temperature, 3000))
-        
-        # Molecular weight for typical flue gas
-        molecular_weight = 28.5
-        
-        return density, cp, viscosity, thermal_conductivity, molecular_weight
+        if self.gas_calculations > 0:
+            thermo_success_rate = (self.gas_calculations - self.thermo_failures) / self.gas_calculations  
+            logger.info(f"  Thermo success rate: {thermo_success_rate:.1%}")
+
+
+# Module test function
+def test_property_calculations():
+    """Test both IAPWS and Thermo property calculations."""
+    calc = PropertyCalculator()
+    
+    print("Testing Enhanced Property Calculator...")
+    
+    # Test steam properties
+    print("\n1. Testing IAPWS Steam Properties:")
+    steam = calc.get_steam_properties(700, 600)  # Superheated steam
+    print(f"   700°F, 600 psia steam: h={steam.enthalpy:.1f} Btu/lb, rho={steam.density:.3f} lb/ft³")
+    
+    water = calc.get_steam_properties(220, 600)  # Feedwater
+    print(f"   220°F, 600 psia water: h={water.enthalpy:.1f} Btu/lb, rho={water.density:.1f} lb/ft³")
+    
+    specific_energy = steam.enthalpy - water.enthalpy
+    print(f"   Specific energy difference: {specific_energy:.1f} Btu/lb")
+    
+    # Test flue gas properties
+    print("\n2. Testing Thermo Flue Gas Properties:")
+    composition = calc.create_typical_flue_gas_composition(excess_air=0.2)
+    gas = calc.get_flue_gas_properties(600, composition)
+    print(f"   600°F flue gas: MW={gas.molecular_weight:.1f}, rho={gas.density:.4f} lb/ft³")
+    print(f"   Composition: {composition}")
+    
+    # Log statistics
+    calc.log_statistics()
+    
+    return steam, water, gas
+
+
+if __name__ == "__main__":
+    test_property_calculations()
