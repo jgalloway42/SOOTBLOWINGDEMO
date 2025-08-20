@@ -652,7 +652,77 @@ class SootBlowingSimulator:
             'final_fouling_arrays': final_fouling
         }
 
+# Add this to the END of fouling_and_soot_blowing.py
 
+class BoilerSection:
+    """
+    Quick compatibility class for BoilerSection to fix imports.
+    This implements the minimal interface needed by boiler_system.py.
+    """
+    
+    def __init__(self, name: str, num_segments: int, tube_count: int, 
+                 tube_length: float, tube_od: float):
+        """Initialize boiler section."""
+        self.name = name
+        self.num_segments = num_segments
+        self.tube_count = tube_count
+        self.tube_length = tube_length
+        self.tube_od = tube_od
+        
+        # Initialize fouling factors
+        self.gas_fouling = 0.002  # Default
+        self.water_fouling = 0.001  # Default
+        
+        # Create fouling arrays for each segment
+        self.gas_fouling_array = [self.gas_fouling] * num_segments
+        self.water_fouling_array = [self.water_fouling] * num_segments
+        
+        # Hours since last cleaning for each segment
+        self.hours_since_cleaning = [0.0] * num_segments
+    
+    def set_initial_fouling(self, gas_fouling: float, water_fouling: float):
+        """Set initial fouling factors."""
+        self.gas_fouling = gas_fouling
+        self.water_fouling = water_fouling
+        self.gas_fouling_array = [gas_fouling] * self.num_segments
+        self.water_fouling_array = [water_fouling] * self.num_segments
+    
+    def get_current_fouling_arrays(self) -> Dict[str, List[float]]:
+        """Get current fouling factor arrays."""
+        return {
+            'gas': self.gas_fouling_array.copy(),
+            'water': self.water_fouling_array.copy()
+        }
+    
+    def apply_soot_blowing(self, segment_list: List[int], effectiveness: float = 0.8):
+        """Apply soot blowing to specified segments."""
+        for segment_id in segment_list:
+            if 0 <= segment_id < self.num_segments:
+                # Reduce fouling by effectiveness amount
+                self.gas_fouling_array[segment_id] *= (1 - effectiveness)
+                self.water_fouling_array[segment_id] *= (1 - effectiveness)
+                self.hours_since_cleaning[segment_id] = 0.0
+    
+    def simulate_fouling_buildup(self, hours: float, fouling_rate_per_hour: float = 0.001):
+        """Simulate fouling buildup over time."""
+        for i in range(self.num_segments):
+            self.hours_since_cleaning[i] += hours
+            # Gradual fouling increase
+            buildup = fouling_rate_per_hour * hours
+            self.gas_fouling_array[i] += buildup
+            self.water_fouling_array[i] += buildup * 0.5  # Water side builds up slower
+    
+    def get_section_summary(self) -> Dict:
+        """Get section performance summary."""
+        return {
+            'section_name': self.name,
+            'num_segments': self.num_segments,
+            'avg_gas_fouling': sum(self.gas_fouling_array) / len(self.gas_fouling_array),
+            'avg_water_fouling': sum(self.water_fouling_array) / len(self.water_fouling_array),
+            'max_hours_since_cleaning': max(self.hours_since_cleaning),
+            'tube_count': self.tube_count,
+            'tube_length': self.tube_length
+        }
 
 
 if __name__ == "__main__":
@@ -664,3 +734,5 @@ if __name__ == "__main__":
     print(f"   Replace fouling calculation functions with corrected versions")
     print(f"   Update section temperature assignments")  
     print(f"   Verify with actual boiler operational data")
+
+
