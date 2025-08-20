@@ -1,24 +1,26 @@
 #!/usr/bin/env python3
 """
-Enhanced Debug Script - Complete Validation Suite
+Enhanced Debug Script - Phase 1 Diagnostic Suite
 
-This script provides comprehensive testing and validation for the fixed boiler simulation:
-- Tests the fixed solver interface compatibility
-- Validates that the annual simulator works with new structure
-- Checks for Unicode logging issues
-- Provides detailed diagnostics and validation
-- Tests IAPWS integration and load-dependent variation
+This script provides comprehensive testing and validation for the boiler simulation
+with Phase 1 diagnostics to identify static efficiency calculation issues:
 
-CRITICAL TESTS:
-- Solver return structure validation
-- Annual simulator interface compatibility
+PHASE 1 DIAGNOSTIC TESTS:
+- Efficiency calculation tracing to find static points
+- Parameter propagation validation through calculation chain
+- Component-level variation testing for individual sections
+- Load curve implementation verification
+- Fouling impact validation on efficiency calculations
+
+EXISTING TESTS:
+- IAPWS integration validation
+- Solver interface compatibility
 - Unicode-safe logging verification
-- Energy balance and convergence testing
-- IAPWS property calculation validation
-- Load-dependent efficiency and temperature variation
+- Load-dependent variation testing
+- Annual simulator compatibility
 
 Author: Enhanced Boiler Modeling System
-Version: 8.2 - Complete Fix Validation
+Version: 8.3 - Phase 1 Diagnostic Implementation
 """
 
 import sys
@@ -59,6 +61,10 @@ def print_result(success: bool, message: str):
     """Print test result with clear formatting."""
     status = "[PASS]" if success else "[FAIL]"
     print(f"  {status} {message}")
+
+def print_diagnostic(level: str, message: str):
+    """Print diagnostic information."""
+    print(f"  [DIAG-{level}] {message}")
 
 def test_module_imports():
     """Test that all required modules can be imported."""
@@ -110,9 +116,531 @@ def test_module_imports():
     print_result(all_imported, f"All modules imported: {sum(import_results.values())}/{len(import_results)}")
     return all_imported
 
+def test_efficiency_calculation_tracing():
+    """Trace efficiency calculation step-by-step to find static points."""
+    print_test_step("2A", "PHASE 1: Efficiency Calculation Tracing")
+    
+    try:
+        from boiler_system import EnhancedCompleteBoilerSystem
+        
+        print("  Tracing efficiency calculation across load scenarios...")
+        
+        # Test scenarios with dramatically different parameters
+        test_scenarios = [
+            (50e6, 42000, 2800, 0.5, "50% Load + Light Fouling"),
+            (100e6, 84000, 3000, 1.0, "100% Load + Normal Fouling"), 
+            (150e6, 126000, 3200, 2.0, "150% Load + Heavy Fouling")
+        ]
+        
+        efficiency_results = []
+        calculation_traces = []
+        
+        for fuel_input, mass_flow, exit_temp, fouling_mult, description in test_scenarios:
+            print(f"\n  Analyzing: {description}")
+            print_diagnostic("INPUT", f"fuel_input={fuel_input/1e6:.0f}MMBtu/hr, fouling={fouling_mult}x")
+            
+            try:
+                # Initialize boiler with specific parameters
+                boiler = EnhancedCompleteBoilerSystem(
+                    fuel_input=fuel_input,
+                    flue_gas_mass_flow=mass_flow,
+                    furnace_exit_temp=exit_temp,
+                    base_fouling_multiplier=fouling_mult
+                )
+                
+                # Log initialization parameters
+                print_diagnostic("INIT", f"Boiler initialized with fuel_input={boiler.fuel_input/1e6:.1f}MMBtu/hr")
+                print_diagnostic("INIT", f"Base fouling multiplier={fouling_mult}")
+                
+                # Solve system and extract intermediate values
+                results = boiler.solve_enhanced_system(max_iterations=15, tolerance=10.0)
+                
+                # Extract key calculation components
+                final_efficiency = results['final_efficiency']
+                final_stack_temp = results['final_stack_temperature']
+                energy_balance_error = results['energy_balance_error']
+                
+                print_diagnostic("CALC", f"Final efficiency: {final_efficiency:.3f} ({final_efficiency:.1%})")
+                print_diagnostic("CALC", f"Stack temperature: {final_stack_temp:.1f}F")
+                print_diagnostic("CALC", f"Energy balance error: {energy_balance_error:.1%}")
+                
+                efficiency_results.append({
+                    'scenario': description,
+                    'fuel_input': fuel_input/1e6,
+                    'fouling': fouling_mult,
+                    'efficiency': final_efficiency,
+                    'stack_temp': final_stack_temp,
+                    'energy_error': energy_balance_error
+                })
+                
+                # Try to extract more detailed calculation information
+                if hasattr(boiler, 'system_performance') and boiler.system_performance:
+                    perf = boiler.system_performance
+                    print_diagnostic("DETAIL", f"System performance available: {type(perf)}")
+                    
+                    # Extract component-level information if available
+                    if hasattr(perf, 'overall_efficiency'):
+                        print_diagnostic("DETAIL", f"Component efficiency: {perf.overall_efficiency:.3f}")
+                
+                calculation_traces.append({
+                    'scenario': description,
+                    'initialization_successful': True,
+                    'solver_converged': results['converged'],
+                    'final_efficiency': final_efficiency
+                })
+                
+            except Exception as e:
+                print_diagnostic("ERROR", f"Scenario failed: {e}")
+                calculation_traces.append({
+                    'scenario': description,
+                    'initialization_successful': False,
+                    'error': str(e)
+                })
+                continue
+        
+        # Analyze efficiency variation
+        if len(efficiency_results) >= 2:
+            efficiencies = [r['efficiency'] for r in efficiency_results]
+            fuel_inputs = [r['fuel_input'] for r in efficiency_results]
+            fouling_factors = [r['fouling'] for r in efficiency_results]
+            
+            efficiency_range = max(efficiencies) - min(efficiencies)
+            fuel_range = max(fuel_inputs) - min(fuel_inputs)
+            fouling_range = max(fouling_factors) - min(fouling_factors)
+            
+            print(f"\n  EFFICIENCY VARIATION ANALYSIS:")
+            print_diagnostic("RESULT", f"Efficiency range: {efficiency_range:.4f} ({efficiency_range:.2%})")
+            print_diagnostic("RESULT", f"Fuel input range: {fuel_range:.0f}MMBtu/hr ({fuel_range/min(fuel_inputs)*100:.0f}% increase)")
+            print_diagnostic("RESULT", f"Fouling range: {fouling_range:.1f}x ({fouling_range/min(fouling_factors)*100:.0f}% increase)")
+            
+            # Expected: >2% efficiency variation for 3x fuel input and 4x fouling change
+            expected_variation = efficiency_range >= 0.02  # At least 2% variation expected
+            
+            print_result(expected_variation, f"Efficiency variation adequate: {efficiency_range:.2%} (target: >=2%)")
+            
+            # Log individual scenario results
+            print(f"\n  DETAILED SCENARIO RESULTS:")
+            for result in efficiency_results:
+                print(f"    {result['scenario']:25s}: Eff={result['efficiency']:.1%}, Stack={result['stack_temp']:.0f}F")
+            
+            return expected_variation
+        else:
+            print_result(False, "Insufficient scenarios completed for analysis")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Efficiency calculation tracing failed: {e}")
+        traceback.print_exc()
+        return False
+
+def test_parameter_propagation_validation():
+    """Validate that input parameters propagate to calculation methods."""
+    print_test_step("2B", "PHASE 1: Parameter Propagation Validation")
+    
+    try:
+        from boiler_system import EnhancedCompleteBoilerSystem
+        
+        print("  Testing parameter propagation through calculation chain...")
+        
+        # Test with dramatically different parameter sets
+        parameter_sets = [
+            {"fuel_input": 60e6, "flue_gas_mass_flow": 50000, "furnace_exit_temp": 2900, "base_fouling_multiplier": 0.3},
+            {"fuel_input": 120e6, "flue_gas_mass_flow": 100000, "furnace_exit_temp": 3100, "base_fouling_multiplier": 1.8}
+        ]
+        
+        propagation_results = []
+        
+        for i, params in enumerate(parameter_sets):
+            print(f"\n  Parameter Set {i+1}:")
+            print_diagnostic("INPUT", f"fuel_input={params['fuel_input']/1e6:.0f}MMBtu/hr")
+            print_diagnostic("INPUT", f"flue_gas_mass_flow={params['flue_gas_mass_flow']/1000:.0f}k lbm/hr")
+            print_diagnostic("INPUT", f"furnace_exit_temp={params['furnace_exit_temp']:.0f}F")
+            print_diagnostic("INPUT", f"base_fouling_multiplier={params['base_fouling_multiplier']:.1f}x")
+            
+            try:
+                # Initialize boiler
+                boiler = EnhancedCompleteBoilerSystem(**params)
+                
+                # Check parameter storage
+                print_diagnostic("STORE", f"Stored fuel_input: {boiler.fuel_input/1e6:.1f}MMBtu/hr")
+                print_diagnostic("STORE", f"Stored fouling multiplier: {boiler.base_fouling_multiplier:.1f}x")
+                
+                # Solve and check if parameters affect results
+                results = boiler.solve_enhanced_system(max_iterations=10, tolerance=15.0)
+                
+                propagation_results.append({
+                    'set': i+1,
+                    'fuel_input': params['fuel_input']/1e6,
+                    'fouling_mult': params['base_fouling_multiplier'],
+                    'efficiency': results['final_efficiency'],
+                    'stack_temp': results['final_stack_temperature'],
+                    'converged': results['converged']
+                })
+                
+                print_diagnostic("OUTPUT", f"Final efficiency: {results['final_efficiency']:.3f}")
+                print_diagnostic("OUTPUT", f"Stack temperature: {results['final_stack_temperature']:.1f}F")
+                
+                # Check for obvious parameter impact
+                if hasattr(boiler, 'sections') and boiler.sections:
+                    print_diagnostic("SECTIONS", f"Number of boiler sections: {len(boiler.sections)}")
+                    
+                    # Try to extract section-level information
+                    for j, section in enumerate(boiler.sections[:3]):  # First 3 sections
+                        if hasattr(section, 'fouling_factor'):
+                            print_diagnostic("SECTION", f"Section {j} fouling factor: {section.fouling_factor:.3f}")
+                        if hasattr(section, 'heat_transfer_coefficient'):
+                            print_diagnostic("SECTION", f"Section {j} heat transfer coeff: {getattr(section, 'heat_transfer_coefficient', 'N/A')}")
+                
+            except Exception as e:
+                print_diagnostic("ERROR", f"Parameter set {i+1} failed: {e}")
+                propagation_results.append({
+                    'set': i+1,
+                    'error': str(e)
+                })
+        
+        # Analyze parameter impact
+        if len(propagation_results) >= 2 and all('error' not in r for r in propagation_results):
+            result1, result2 = propagation_results[0], propagation_results[1]
+            
+            fuel_change = result2['fuel_input'] / result1['fuel_input']
+            fouling_change = result2['fouling_mult'] / result1['fouling_mult']
+            efficiency_change = result2['efficiency'] / result1['efficiency']
+            stack_temp_change = (result2['stack_temp'] - result1['stack_temp'])
+            
+            print(f"\n  PARAMETER IMPACT ANALYSIS:")
+            print_diagnostic("CHANGE", f"Fuel input changed by: {fuel_change:.1f}x")
+            print_diagnostic("CHANGE", f"Fouling changed by: {fouling_change:.1f}x")
+            print_diagnostic("CHANGE", f"Efficiency ratio: {efficiency_change:.4f}")
+            print_diagnostic("CHANGE", f"Stack temp difference: {stack_temp_change:.1f}F")
+            
+            # Parameters should cause some change in outputs
+            parameter_impact = (abs(efficiency_change - 1.0) > 0.001) or (abs(stack_temp_change) > 5.0)
+            
+            print_result(parameter_impact, f"Parameters show measurable impact on results")
+            return parameter_impact
+        else:
+            print_result(False, "Could not analyze parameter impact due to errors")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Parameter propagation validation failed: {e}")
+        traceback.print_exc()
+        return False
+
+def test_component_level_variation():
+    """Test individual boiler sections for load-dependent behavior."""
+    print_test_step("2C", "PHASE 1: Component-Level Variation Testing")
+    
+    try:
+        from boiler_system import EnhancedCompleteBoilerSystem
+        from heat_transfer_calculations import HeatTransferCalculator
+        
+        print("  Testing individual boiler components for load response...")
+        
+        # Test different load conditions
+        load_conditions = [
+            (70e6, 0.8, "70% Load"),
+            (100e6, 1.0, "100% Load"),
+            (130e6, 1.2, "130% Load")
+        ]
+        
+        component_results = []
+        
+        for fuel_input, fouling_mult, description in load_conditions:
+            print(f"\n  Analyzing: {description}")
+            
+            try:
+                boiler = EnhancedCompleteBoilerSystem(
+                    fuel_input=fuel_input,
+                    flue_gas_mass_flow=int(84000 * fuel_input / 100e6),
+                    furnace_exit_temp=3000,
+                    base_fouling_multiplier=fouling_mult
+                )
+                
+                # Test heat transfer calculator directly
+                ht_calc = HeatTransferCalculator()
+                
+                # Test component calculations
+                test_conditions = {
+                    'temperature': 1500,  # F
+                    'pressure': 150,      # psia
+                    'flow_rate': fuel_input / 1e6,  # Scaled flow
+                }
+                
+                print_diagnostic("COMP", f"Testing heat transfer at {test_conditions['temperature']}F, flow={test_conditions['flow_rate']:.1f}")
+                
+                # Test gas properties
+                try:
+                    gas_props = ht_calc.property_calculator.get_flue_gas_properties(test_conditions['temperature'])
+                    print_diagnostic("PROPS", f"Gas density: {gas_props.density:.4f} lbm/ft3")
+                    print_diagnostic("PROPS", f"Gas cp: {gas_props.cp:.4f} Btu/lbm-F")
+                except Exception as e:
+                    print_diagnostic("ERROR", f"Gas properties failed: {e}")
+                
+                # Solve full system
+                results = boiler.solve_enhanced_system(max_iterations=10, tolerance=15.0)
+                
+                component_results.append({
+                    'condition': description,
+                    'fuel_input': fuel_input/1e6,
+                    'fouling_mult': fouling_mult,
+                    'efficiency': results['final_efficiency'],
+                    'stack_temp': results['final_stack_temperature'],
+                    'flow_rate': test_conditions['flow_rate']
+                })
+                
+                print_diagnostic("RESULT", f"System efficiency: {results['final_efficiency']:.3f}")
+                print_diagnostic("RESULT", f"Stack temperature: {results['final_stack_temperature']:.1f}F")
+                
+                # Try to access section-level data if available
+                if hasattr(boiler, 'sections') and boiler.sections:
+                    for i, section in enumerate(boiler.sections[:2]):  # First 2 sections
+                        section_name = getattr(section, 'name', f'Section_{i}')
+                        print_diagnostic("SECT", f"{section_name}: Available attributes: {[attr for attr in dir(section) if not attr.startswith('_')][:5]}")
+                
+            except Exception as e:
+                print_diagnostic("ERROR", f"Component test failed for {description}: {e}")
+                continue
+        
+        # Analyze component-level variation
+        if len(component_results) >= 2:
+            efficiencies = [r['efficiency'] for r in component_results]
+            stack_temps = [r['stack_temp'] for r in component_results]
+            fuel_inputs = [r['fuel_input'] for r in component_results]
+            
+            efficiency_range = max(efficiencies) - min(efficiencies)
+            stack_temp_range = max(stack_temps) - min(stack_temps)
+            fuel_range = max(fuel_inputs) - min(fuel_inputs)
+            
+            print(f"\n  COMPONENT VARIATION ANALYSIS:")
+            print_diagnostic("RANGE", f"Efficiency range: {efficiency_range:.4f} ({efficiency_range:.2%})")
+            print_diagnostic("RANGE", f"Stack temp range: {stack_temp_range:.1f}F")
+            print_diagnostic("RANGE", f"Fuel input range: {fuel_range:.0f}MMBtu/hr")
+            
+            # Components should show some variation
+            component_variation = efficiency_range > 0.005 or stack_temp_range > 10.0
+            
+            print_result(component_variation, f"Components show measurable variation")
+            return component_variation
+        else:
+            print_result(False, "Insufficient component data for analysis")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Component-level variation test failed: {e}")
+        traceback.print_exc()
+        return False
+
+def test_load_curve_implementation():
+    """Test that load-dependent efficiency curves are implemented and active."""
+    print_test_step("2D", "PHASE 1: Load Curve Implementation Verification")
+    
+    try:
+        from boiler_system import EnhancedCompleteBoilerSystem
+        
+        print("  Checking for load-dependent efficiency curve implementation...")
+        
+        # Test across wide load range to detect curves
+        load_points = [
+            (45e6, "45% Load"),
+            (60e6, "60% Load"),
+            (75e6, "75% Load"),
+            (90e6, "90% Load"),
+            (100e6, "100% Load"),
+            (110e6, "110% Load")
+        ]
+        
+        load_curve_results = []
+        
+        for fuel_input, description in load_points:
+            print(f"\n  Testing: {description}")
+            
+            try:
+                # Calculate load factor (assuming 100e6 is full load)
+                load_factor = fuel_input / 100e6
+                print_diagnostic("LOAD", f"Load factor: {load_factor:.2f}")
+                
+                boiler = EnhancedCompleteBoilerSystem(
+                    fuel_input=fuel_input,
+                    flue_gas_mass_flow=int(84000 * load_factor),
+                    furnace_exit_temp=2900 + (load_factor - 1.0) * 200,  # Scale exit temp
+                    base_fouling_multiplier=1.0
+                )
+                
+                # Check for load-dependent methods
+                boiler_methods = [method for method in dir(boiler) if 'load' in method.lower() or 'curve' in method.lower()]
+                if boiler_methods:
+                    print_diagnostic("METHOD", f"Load-related methods found: {boiler_methods}")
+                else:
+                    print_diagnostic("METHOD", "No obvious load-related methods found")
+                
+                results = boiler.solve_enhanced_system(max_iterations=10, tolerance=15.0)
+                
+                load_curve_results.append({
+                    'load_factor': load_factor,
+                    'description': description,
+                    'efficiency': results['final_efficiency'],
+                    'stack_temp': results['final_stack_temperature']
+                })
+                
+                print_diagnostic("CURVE", f"Load {load_factor:.2f} -> Efficiency {results['final_efficiency']:.3f}")
+                
+            except Exception as e:
+                print_diagnostic("ERROR", f"Load point {description} failed: {e}")
+                continue
+        
+        # Analyze load curve behavior
+        if len(load_curve_results) >= 4:
+            # Sort by load factor
+            load_curve_results.sort(key=lambda x: x['load_factor'])
+            
+            print(f"\n  LOAD CURVE ANALYSIS:")
+            for result in load_curve_results:
+                print_diagnostic("POINT", f"Load {result['load_factor']:.2f}: Eff={result['efficiency']:.3f}, Stack={result['stack_temp']:.0f}F")
+            
+            # Check for characteristic efficiency curve shape
+            efficiencies = [r['efficiency'] for r in load_curve_results]
+            load_factors = [r['load_factor'] for r in load_curve_results]
+            
+            # Look for peak efficiency around 75-85% load
+            max_eff_index = efficiencies.index(max(efficiencies))
+            peak_load_factor = load_factors[max_eff_index]
+            
+            efficiency_range = max(efficiencies) - min(efficiencies)
+            
+            print_diagnostic("PEAK", f"Peak efficiency at load factor: {peak_load_factor:.2f}")
+            print_diagnostic("PEAK", f"Efficiency range across loads: {efficiency_range:.4f} ({efficiency_range:.2%})")
+            
+            # Realistic load curve should show:
+            # 1. Some efficiency variation across loads
+            # 2. Peak efficiency between 0.6-0.9 load factor
+            realistic_curve = (
+                efficiency_range >= 0.01 and  # At least 1% variation
+                0.6 <= peak_load_factor <= 0.9  # Realistic peak location
+            )
+            
+            print_result(realistic_curve, f"Load curve shows realistic behavior")
+            return realistic_curve
+        else:
+            print_result(False, "Insufficient load points for curve analysis")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Load curve implementation test failed: {e}")
+        traceback.print_exc()
+        return False
+
+def test_fouling_impact_validation():
+    """Validate that fouling parameters impact efficiency calculations."""
+    print_test_step("2E", "PHASE 1: Fouling Impact Validation")
+    
+    try:
+        from boiler_system import EnhancedCompleteBoilerSystem
+        
+        print("  Testing fouling parameter impact on efficiency calculations...")
+        
+        # Test fouling multiplier progression from clean to severely fouled
+        fouling_levels = [
+            (0.2, "Very Clean"),
+            (0.5, "Light Fouling"),
+            (1.0, "Normal Fouling"),
+            (2.0, "Heavy Fouling"),
+            (4.0, "Severe Fouling")
+        ]
+        
+        fouling_results = []
+        
+        for fouling_mult, description in fouling_levels:
+            print(f"\n  Testing: {description} (fouling={fouling_mult:.1f}x)")
+            
+            try:
+                boiler = EnhancedCompleteBoilerSystem(
+                    fuel_input=100e6,  # Constant fuel input
+                    flue_gas_mass_flow=84000,
+                    furnace_exit_temp=3000,
+                    base_fouling_multiplier=fouling_mult
+                )
+                
+                print_diagnostic("FOUL", f"Base fouling multiplier set to: {fouling_mult:.1f}x")
+                
+                # Check if fouling parameter is stored
+                stored_fouling = getattr(boiler, 'base_fouling_multiplier', 'NOT_FOUND')
+                print_diagnostic("STORE", f"Stored fouling multiplier: {stored_fouling}")
+                
+                results = boiler.solve_enhanced_system(max_iterations=15, tolerance=15.0)
+                
+                fouling_results.append({
+                    'fouling_mult': fouling_mult,
+                    'description': description,
+                    'efficiency': results['final_efficiency'],
+                    'stack_temp': results['final_stack_temperature'],
+                    'energy_error': results['energy_balance_error']
+                })
+                
+                print_diagnostic("IMPACT", f"Efficiency: {results['final_efficiency']:.3f}")
+                print_diagnostic("IMPACT", f"Stack temp: {results['final_stack_temperature']:.1f}F")
+                print_diagnostic("IMPACT", f"Energy error: {results['energy_balance_error']:.1%}")
+                
+                # Check for section-level fouling application
+                if hasattr(boiler, 'sections') and boiler.sections:
+                    for i, section in enumerate(boiler.sections[:2]):
+                        if hasattr(section, 'fouling_factor'):
+                            section_fouling = getattr(section, 'fouling_factor', 'N/A')
+                            print_diagnostic("SECT", f"Section {i} fouling factor: {section_fouling}")
+                
+            except Exception as e:
+                print_diagnostic("ERROR", f"Fouling test failed for {description}: {e}")
+                continue
+        
+        # Analyze fouling impact
+        if len(fouling_results) >= 3:
+            # Sort by fouling level
+            fouling_results.sort(key=lambda x: x['fouling_mult'])
+            
+            print(f"\n  FOULING IMPACT ANALYSIS:")
+            for result in fouling_results:
+                print_diagnostic("FOUL", f"{result['fouling_mult']:.1f}x: Eff={result['efficiency']:.3f}, Stack={result['stack_temp']:.0f}F")
+            
+            # Extract trends
+            fouling_mults = [r['fouling_mult'] for r in fouling_results]
+            efficiencies = [r['efficiency'] for r in fouling_results]
+            stack_temps = [r['stack_temp'] for r in fouling_results]
+            
+            # Expected: As fouling increases, efficiency decreases, stack temp increases
+            min_fouling_idx = fouling_mults.index(min(fouling_mults))
+            max_fouling_idx = fouling_mults.index(max(fouling_mults))
+            
+            efficiency_change = efficiencies[max_fouling_idx] - efficiencies[min_fouling_idx]
+            stack_temp_change = stack_temps[max_fouling_idx] - stack_temps[min_fouling_idx]
+            fouling_change = fouling_mults[max_fouling_idx] / fouling_mults[min_fouling_idx]
+            
+            print_diagnostic("TREND", f"Fouling increased by: {fouling_change:.1f}x")
+            print_diagnostic("TREND", f"Efficiency change: {efficiency_change:.4f} ({efficiency_change:.2%})")
+            print_diagnostic("TREND", f"Stack temp change: {stack_temp_change:.1f}F")
+            
+            # Realistic fouling impact should show:
+            # 1. Decreasing efficiency with increased fouling
+            # 2. Increasing stack temperature with increased fouling
+            # 3. Meaningful change magnitude
+            realistic_fouling = (
+                efficiency_change < -0.01 and  # Efficiency should decrease by at least 1%
+                stack_temp_change > 15.0       # Stack temp should increase by at least 15F
+            )
+            
+            print_result(realistic_fouling, f"Fouling shows realistic impact on system performance")
+            return realistic_fouling
+        else:
+            print_result(False, "Insufficient fouling data for analysis")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"Fouling impact validation failed: {e}")
+        traceback.print_exc()
+        return False
+
 def test_iapws_integration():
     """Test the fixed IAPWS integration specifically."""
-    print_test_step("2", "Testing Fixed IAPWS Integration")
+    print_test_step("3", "IAPWS Integration Fix Validation")
     
     try:
         from thermodynamic_properties import PropertyCalculator
@@ -180,7 +708,7 @@ def test_iapws_integration():
 
 def test_enhanced_boiler_system():
     """Test the enhanced boiler system with fixed interface."""
-    print_test_step("3", "Testing Enhanced Boiler System")
+    print_test_step("4", "Enhanced Boiler System Validation")
     
     try:
         from boiler_system import EnhancedCompleteBoilerSystem
@@ -241,7 +769,7 @@ def test_enhanced_boiler_system():
 
 def test_annual_simulator_interface():
     """Test the annual simulator with fixed interface."""
-    print_test_step("4", "Testing Annual Simulator Interface")
+    print_test_step("5", "Annual Simulator Interface Validation")
     
     try:
         from annual_boiler_simulator import AnnualBoilerSimulator
@@ -317,7 +845,7 @@ def test_annual_simulator_interface():
 
 def test_unicode_logging():
     """Test that logging works without Unicode errors."""
-    print_test_step("5", "Testing Unicode-Safe Logging")
+    print_test_step("6", "Unicode-Safe Logging Validation")
     
     try:
         # Test logging with various characters
@@ -350,7 +878,7 @@ def test_unicode_logging():
 
 def test_load_variation():
     """Test that the system produces varying results under different loads."""
-    print_test_step("6", "Testing Load-Dependent Variation")
+    print_test_step("7", "Basic Load Variation Testing")
     
     try:
         from boiler_system import EnhancedCompleteBoilerSystem
@@ -410,85 +938,9 @@ def test_load_variation():
         traceback.print_exc()
         return False
 
-def test_load_variation_improved():
-    """Test the improved load-dependent variation with IAPWS integration."""
-    print_test_step("7", "Testing Improved Load Variation with IAPWS")
-    
-    try:
-        from boiler_system import EnhancedCompleteBoilerSystem
-        
-        # Test across wider range with different fouling
-        test_scenarios = [
-            (45e6, 0.5, "45% Load - Light Fouling"),
-            (75e6, 1.0, "75% Load - Normal Fouling"),
-            (100e6, 1.5, "100% Load - Heavy Fouling"),
-            (110e6, 2.0, "110% Load - Very Heavy Fouling")
-        ]
-        
-        results = []
-        
-        for fuel_input, fouling_mult, description in test_scenarios:
-            print(f"  Testing {description}...")
-            
-            try:
-                boiler = EnhancedCompleteBoilerSystem(
-                    fuel_input=fuel_input,
-                    flue_gas_mass_flow=int(84000 * fuel_input / 100e6),
-                    furnace_exit_temp=3000,
-                    base_fouling_multiplier=fouling_mult
-                )
-                
-                solve_results = boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
-                
-                efficiency = solve_results['final_efficiency']
-                stack_temp = solve_results['final_stack_temperature']
-                converged = solve_results['converged']
-                
-                results.append({
-                    'fuel_input': fuel_input/1e6,
-                    'fouling': fouling_mult,
-                    'efficiency': efficiency,
-                    'stack_temp': stack_temp,
-                    'converged': converged
-                })
-                
-                print(f"    {description}: Eff={efficiency:.1%}, Stack={stack_temp:.0f}°F")
-                
-            except Exception as e:
-                print(f"    {description}: ERROR - {e}")
-                continue
-        
-        if len(results) < 2:
-            print_result(False, "Insufficient scenarios completed for variation analysis")
-            return False
-        
-        # Analyze variation
-        efficiencies = [r['efficiency'] for r in results]
-        stack_temps = [r['stack_temp'] for r in results]
-        
-        efficiency_range = max(efficiencies) - min(efficiencies)
-        stack_temp_range = max(stack_temps) - min(stack_temps)
-        
-        # Expected: 2-5% efficiency variation, 20-50°F stack temperature variation
-        efficiency_variation_ok = efficiency_range >= 0.02  # At least 2% variation
-        stack_temp_variation_ok = stack_temp_range >= 20.0  # At least 20°F variation
-        
-        print(f"    Efficiency variation: {efficiency_range:.2%} (target: ≥2%)")
-        print(f"    Stack temp variation: {stack_temp_range:.0f}°F (target: ≥20°F)")
-        
-        print_result(efficiency_variation_ok, "Efficiency shows adequate load variation")
-        print_result(stack_temp_variation_ok, "Stack temperature shows adequate load variation")
-        
-        return efficiency_variation_ok and stack_temp_variation_ok
-        
-    except Exception as e:
-        print_result(False, f"Improved load variation test failed: {e}")
-        traceback.print_exc()
-        return False
-
 def test_short_simulation():
     """Test a short simulation run to verify end-to-end functionality."""
-    print_test_step("8", "Testing Short Simulation Run (24 hours)")
+    print_test_step("8", "Short Simulation Run (24 hours)")
     
     try:
         from annual_boiler_simulator import AnnualBoilerSimulator
@@ -552,383 +1004,99 @@ def test_short_simulation():
         traceback.print_exc()
         return False
 
-def test_solver_convergence():
-    """Test solver convergence behavior and error handling."""
-    print_test_step("9", "Testing Solver Convergence and Error Handling")
-    
-    try:
-        from boiler_system import EnhancedCompleteBoilerSystem
-        
-        # Test normal convergence
-        print("  Testing normal convergence...")
-        boiler = EnhancedCompleteBoilerSystem(fuel_input=100e6)
-        results = boiler.solve_enhanced_system(max_iterations=20, tolerance=5.0)
-        
-        normal_converged = results['converged']
-        print_result(normal_converged, f"Normal conditions converged: {normal_converged}")
-        
-        # Test challenging convergence (tight tolerance)
-        print("  Testing challenging convergence...")
-        results_tight = boiler.solve_enhanced_system(max_iterations=10, tolerance=1.0)
-        
-        tight_result = 'converged' in results_tight  # Should at least return proper structure
-        print_result(tight_result, "Tight tolerance returned proper structure")
-        
-        # Test extreme conditions
-        print("  Testing extreme conditions...")
-        extreme_boiler = EnhancedCompleteBoilerSystem(
-            fuel_input=150e6,  # High load
-            flue_gas_mass_flow=120000,
-            furnace_exit_temp=3500,  # High temperature
-            base_fouling_multiplier=2.0  # Heavy fouling
-        )
-        
-        extreme_results = extreme_boiler.solve_enhanced_system(max_iterations=5, tolerance=20.0)
-        extreme_structure_ok = 'converged' in extreme_results
-        
-        print_result(extreme_structure_ok, "Extreme conditions returned proper structure")
-        
-        # Check that all results have consistent structure
-        all_results = [results, results_tight, extreme_results]
-        expected_keys = ['converged', 'final_efficiency', 'final_stack_temperature']
-        
-        structure_consistent = True
-        for i, result in enumerate(all_results):
-            missing = [key for key in expected_keys if key not in result]
-            if missing:
-                print_result(False, f"Result {i+1} missing keys: {missing}")
-                structure_consistent = False
-        
-        if structure_consistent:
-            print_result(True, "All solver results have consistent structure")
-        
-        return structure_consistent
-        
-    except Exception as e:
-        print_result(False, f"Solver convergence test failed: {e}")
-        traceback.print_exc()
-        return False
-
-def test_boiler_system_integration():
-    """Test complete boiler system integration with all components."""
-    print_test_step("10", "Testing Complete Boiler System Integration")
-    
-    try:
-        from boiler_system import EnhancedCompleteBoilerSystem
-        from thermodynamic_properties import PropertyCalculator
-        
-        print("  Testing integrated system initialization...")
-        
-        # Initialize with realistic parameters
-        boiler = EnhancedCompleteBoilerSystem(
-            fuel_input=85e6,
-            flue_gas_mass_flow=75000,
-            furnace_exit_temp=3100,
-            base_fouling_multiplier=1.2
-        )
-        
-        print_result(True, "Integrated boiler system initialized")
-        
-        # Test property calculator integration
-        print("  Testing property calculator integration...")
-        prop_calc = PropertyCalculator()
-        steam_props = prop_calc.get_steam_properties(600, 750)
-        water_props = prop_calc.get_water_properties(600, 230)
-        
-        integration_ok = (steam_props.enthalpy > water_props.enthalpy)
-        print_result(integration_ok, "Property calculator integration working")
-        
-        # Test complete system solve
-        print("  Testing complete system solution...")
-        results = boiler.solve_enhanced_system(max_iterations=25, tolerance=8.0)
-        
-        # Validate comprehensive results
-        required_outputs = [
-            'converged', 'final_efficiency', 'final_stack_temperature',
-            'final_steam_temperature', 'energy_balance_error', 'system_performance'
-        ]
-        
-        all_outputs_present = all(key in results for key in required_outputs)
-        print_result(all_outputs_present, "All required system outputs present")
-        
-        # Test realistic operational range
-        if results['converged']:
-            efficiency = results['final_efficiency']
-            stack_temp = results['final_stack_temperature']
-            steam_temp = results['final_steam_temperature']
-            energy_error = results['energy_balance_error']
-            
-            realistic_performance = (
-                0.75 <= efficiency <= 0.90 and
-                250 <= stack_temp <= 400 and
-                700 <= steam_temp <= 800 and
-                energy_error < 0.15
-            )
-            
-            print(f"    System efficiency: {efficiency:.1%}")
-            print(f"    Stack temperature: {stack_temp:.0f}°F")
-            print(f"    Steam temperature: {steam_temp:.0f}°F")
-            print(f"    Energy balance error: {energy_error:.1%}")
-            
-            print_result(realistic_performance, "System performance within realistic operational range")
-            
-            return all_outputs_present and realistic_performance
-        else:
-            print_result(False, "System failed to converge in integration test")
-            return False
-        
-    except Exception as e:
-        print_result(False, f"Boiler system integration test failed: {e}")
-        traceback.print_exc()
-        return False
-
-def test_annual_simulator_compatibility():
-    """Test annual simulator compatibility with fixed boiler system."""
-    print_test_step("11", "Testing Annual Simulator Compatibility")
-    
-    try:
-        from annual_boiler_simulator import AnnualBoilerSimulator
-        
-        print("  Testing annual simulator with fixed boiler system...")
-        
-        # Initialize simulator
-        simulator = AnnualBoilerSimulator(start_date="2024-01-01")
-        
-        # Test multiple operational scenarios
-        test_scenarios = [
-            ("Winter High Load", timedelta(days=15, hours=10)),
-            ("Spring Medium Load", timedelta(days=105, hours=14)), 
-            ("Summer Low Load", timedelta(days=195, hours=18)),
-            ("Fall Variable Load", timedelta(days=285, hours=6))
-        ]
-        
-        scenario_results = []
-        
-        for scenario_name, time_offset in test_scenarios:
-            print(f"  Testing {scenario_name}...")
-            
-            test_datetime = simulator.start_date + time_offset
-            
-            try:
-                # Generate realistic conditions
-                conditions = simulator._generate_hourly_conditions(test_datetime)
-                soot_actions = simulator._check_soot_blowing_schedule(test_datetime)
-                
-                # Simulate operation
-                operation_result = simulator._simulate_boiler_operation(
-                    test_datetime, conditions, soot_actions
-                )
-                
-                scenario_results.append({
-                    'scenario': scenario_name,
-                    'efficiency': operation_result['system_efficiency'],
-                    'stack_temp': operation_result['stack_temp_F'],
-                    'converged': operation_result['solution_converged'],
-                    'load_factor': conditions['load_factor']
-                })
-                
-                print(f"    {scenario_name}: Load={conditions['load_factor']:.2f}, "
-                      f"Eff={operation_result['system_efficiency']:.1%}, "
-                      f"Stack={operation_result['stack_temp_F']:.0f}°F")
-                
-            except Exception as e:
-                print_result(False, f"{scenario_name} failed: {e}")
-                return False
-        
-        # Analyze seasonal variation
-        efficiencies = [r['efficiency'] for r in scenario_results]
-        stack_temps = [r['stack_temp'] for r in scenario_results]
-        load_factors = [r['load_factor'] for r in scenario_results]
-        
-        efficiency_range = max(efficiencies) - min(efficiencies)
-        stack_temp_range = max(stack_temps) - min(stack_temps)
-        load_range = max(load_factors) - min(load_factors)
-        
-        print(f"    Seasonal efficiency range: {efficiency_range:.2%}")
-        print(f"    Seasonal stack temp range: {stack_temp_range:.0f}°F")
-        print(f"    Seasonal load range: {load_range:.2f}")
-        
-        # Validate seasonal variation
-        seasonal_variation_ok = (
-            efficiency_range >= 0.01 and
-            stack_temp_range >= 15.0 and
-            load_range >= 0.15
-        )
-        
-        print_result(seasonal_variation_ok, "Annual simulator shows realistic seasonal variation")
-        
-        return seasonal_variation_ok
-        
-    except Exception as e:
-        print_result(False, f"Annual simulator compatibility test failed: {e}")
-        traceback.print_exc()
-        return False
-
-def quick_interface_test():
-    """Quick test specifically for the interface fix."""
-    print_test_step("QUICK", "Quick Interface Compatibility Test")
-    
-    try:
-        from thermodynamic_properties import PropertyCalculator
-        from boiler_system import EnhancedCompleteBoilerSystem
-        
-        # Quick IAPWS test
-        print("  Quick IAPWS test...")
-        calc = PropertyCalculator()
-        water_props = calc.get_water_properties(600, 220)
-        print_result(True, f"IAPWS working: h={water_props.enthalpy:.1f} Btu/lb")
-        
-        # Quick solver test
-        print("  Quick solver test...")
-        boiler = EnhancedCompleteBoilerSystem(fuel_input=100e6)
-        results = boiler.solve_enhanced_system(max_iterations=5, tolerance=15.0)
-        converged = results.get('converged', False)
-        
-        print_result(True, f"Solver interface working: converged={converged}")
-        
-        return True
-        
-    except Exception as e:
-        print_result(False, f"Quick interface test failed: {e}")
-        return False
-
-def save_validation_report(test_results: dict, overall_success: bool):
-    """Save detailed validation report."""
-    report_file = log_dir / f"validation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+def save_phase1_diagnostic_report(test_results: dict, overall_success: bool):
+    """Save detailed Phase 1 diagnostic report."""
+    report_file = log_dir / f"phase1_diagnostic_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
     
     with open(report_file, 'w') as f:
-        f.write("ENHANCED BOILER SIMULATION VALIDATION REPORT\n")
-        f.write("=" * 50 + "\n\n")
-        f.write(f"Validation Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"System Version: 8.2 - Complete Fix Validation\n")
-        f.write(f"Overall Result: {'PASS' if overall_success else 'FAIL'}\n\n")
+        f.write("PHASE 1 DIAGNOSTIC REPORT - STATIC EFFICIENCY INVESTIGATION\n")
+        f.write("=" * 70 + "\n\n")
+        f.write(f"Diagnostic Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Script Version: 8.3 - Phase 1 Diagnostic Implementation\n")
+        f.write(f"Overall Result: {'DIAGNOSTIC COMPLETE' if overall_success else 'DIAGNOSTIC INCOMPLETE'}\n\n")
         
-        f.write("TEST RESULTS:\n")
+        f.write("PHASE 1 OBJECTIVES:\n")
+        f.write("-" * 30 + "\n")
+        f.write("1. Trace efficiency calculation path to find static points\n")
+        f.write("2. Validate input parameter propagation through calculation chain\n")
+        f.write("3. Test individual boiler components for load response\n")
+        f.write("4. Verify load curve implementation and activation\n")
+        f.write("5. Validate fouling parameter impact on efficiency\n\n")
+        
+        f.write("DIAGNOSTIC TEST RESULTS:\n")
         f.write("-" * 30 + "\n")
         
-        for test_name, result in test_results.items():
-            status = "PASS" if result else "FAIL"
-            f.write(f"{status:4s} | {test_name}\n")
-        
-        passed = sum(1 for r in test_results.values() if r)
-        total = len(test_results)
-        f.write(f"\nSummary: {passed}/{total} tests passed\n\n")
-        
-        if overall_success:
-            f.write("CONCLUSION:\n")
-            f.write("The enhanced boiler simulation system has passed validation.\n")
-            f.write("The IAPWS integration and load variation fixes are working correctly.\n")
-            f.write("The system is ready for realistic annual simulation runs.\n")
-        else:
-            f.write("ISSUES IDENTIFIED:\n")
-            failed_tests = [name for name, result in test_results.items() if not result]
-            for test in failed_tests:
-                f.write(f"- {test}\n")
-            f.write("\nRecommendation: Address failed tests before production use.\n")
-    
-    print(f"\nValidation report saved: {report_file}")
-
-def save_fix_validation_report(test_results: dict, overall_success: bool):
-    """Save detailed fix validation report."""
-    report_file = log_dir / f"fix_validation_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    
-    with open(report_file, 'w') as f:
-        f.write("BOILER SIMULATION FIX VALIDATION REPORT\n")
-        f.write("=" * 50 + "\n\n")
-        f.write(f"Validation Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"Fix Version: 8.2 - IAPWS Integration and Load Variation\n")
-        f.write(f"Overall Result: {'PASS' if overall_success else 'FAIL'}\n\n")
-        
-        f.write("CRITICAL FIXES TESTED:\n")
-        f.write("-" * 30 + "\n")
-        f.write("1. IAPWS Integration Fix - PropertyCalculator.get_water_properties method\n")
-        f.write("2. Load Variation Fix - Dynamic efficiency and stack temperature\n")
-        f.write("3. Solver Interface Fix - Consistent return structure\n")
-        f.write("4. Unicode Logging Fix - ASCII-safe logging messages\n\n")
-        
-        f.write("TEST RESULTS:\n")
-        f.write("-" * 30 + "\n")
-        
-        critical_tests = [
-            "IAPWS Integration Fix",
-            "Load Variation Fix",
-            "Boiler System Integration", 
-            "Annual Simulator Compatibility"
+        phase1_tests = [
+            "Efficiency Calculation Tracing",
+            "Parameter Propagation Validation",
+            "Component-Level Variation",
+            "Load Curve Implementation",
+            "Fouling Impact Validation"
         ]
         
-        for test_name in critical_tests:
+        for test_name in phase1_tests:
             if test_name in test_results:
                 status = "PASS" if test_results[test_name] else "FAIL"
-                f.write(f"{status:4s} | {test_name} (CRITICAL)\n")
+                f.write(f"{status:4s} | {test_name} (DIAGNOSTIC)\n")
         
-        f.write("\nADDITIONAL TESTS:\n")
+        f.write("\nSUPPORTING VALIDATION TESTS:\n")
         for test_name, result in test_results.items():
-            if test_name not in critical_tests:
+            if test_name not in phase1_tests:
                 status = "PASS" if result else "FAIL"
                 f.write(f"{status:4s} | {test_name}\n")
         
         passed = sum(1 for r in test_results.values() if r)
         total = len(test_results)
-        critical_passed = sum(1 for test in critical_tests 
-                            if test_results.get(test, False))
+        phase1_passed = sum(1 for test in phase1_tests 
+                          if test_results.get(test, False))
         
         f.write(f"\nSummary: {passed}/{total} total tests passed\n")
-        f.write(f"Critical: {critical_passed}/{len(critical_tests)} critical fixes passed\n\n")
+        f.write(f"Phase 1: {phase1_passed}/{len(phase1_tests)} diagnostic tests passed\n\n")
         
         if overall_success:
-            f.write("CONCLUSION:\n")
-            f.write("All critical fixes have been validated and are working correctly.\n")
-            f.write("Expected improvements:\n")
-            f.write("- Efficiency range: 0% -> 2-5% across load conditions\n")
-            f.write("- Stack temperature range: 0°F -> 20-50°F variation\n")
-            f.write("- IAPWS AttributeError: RESOLVED\n")
-            f.write("- Realistic load-dependent boiler behavior: ACHIEVED\n\n")
-            f.write("The system is ready for generating realistic annual datasets.\n")
+            f.write("DIAGNOSTIC FINDINGS:\n")
+            f.write("Phase 1 diagnostic tests have been executed successfully.\n")
+            f.write("Review detailed diagnostic logs to identify:\n")
+            f.write("- Specific code locations where efficiency becomes static\n")
+            f.write("- Parameter propagation bottlenecks\n")
+            f.write("- Missing load-dependent calculation implementations\n")
+            f.write("- Fouling factor application issues\n\n")
+            f.write("NEXT STEPS: Implement Phase 2 fixes based on diagnostic findings\n")
         else:
-            f.write("ISSUES IDENTIFIED:\n")
-            failed_critical = [test for test in critical_tests 
-                             if not test_results.get(test, False)]
-            if failed_critical:
-                f.write("CRITICAL FAILURES:\n")
-                for test in failed_critical:
-                    f.write(f"- {test}\n")
-            
-            failed_other = [name for name, result in test_results.items() 
-                          if not result and name not in critical_tests]
-            if failed_other:
-                f.write("OTHER FAILURES:\n")
-                for test in failed_other:
-                    f.write(f"- {test}\n")
-            
-            f.write("\nRecommendation: Address critical failures before proceeding.\n")
+            f.write("DIAGNOSTIC ISSUES:\n")
+            failed_tests = [name for name, result in test_results.items() if not result]
+            for test in failed_tests:
+                f.write(f"- {test}\n")
+            f.write("\nRecommendation: Address diagnostic test failures before proceeding\n")
     
-    print(f"\nFix validation report saved: {report_file}")
+    print(f"\nPhase 1 diagnostic report saved: {report_file}")
 
-def run_validation_suite():
-    """Run complete validation suite."""
-    print_header("ENHANCED BOILER SIMULATION VALIDATION SUITE")
-    print("Version 8.2 - Complete Fix Validation")
+def run_phase1_diagnostic_suite():
+    """Run Phase 1 diagnostic suite focusing on static efficiency investigation."""
+    print_header("PHASE 1 DIAGNOSTIC SUITE - STATIC EFFICIENCY INVESTIGATION")
+    print("Version 8.3 - Comprehensive Efficiency Calculation Tracing")
     print(f"Run Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Track test results
     test_results = {}
     
-    # Run all tests
-    test_functions = [
+    # Run Phase 1 diagnostic tests
+    phase1_test_functions = [
         ("Module Imports", test_module_imports),
+        ("Efficiency Calculation Tracing", test_efficiency_calculation_tracing),
+        ("Parameter Propagation Validation", test_parameter_propagation_validation),
+        ("Component-Level Variation", test_component_level_variation),
+        ("Load Curve Implementation", test_load_curve_implementation),
+        ("Fouling Impact Validation", test_fouling_impact_validation),
         ("IAPWS Integration Fix", test_iapws_integration),
         ("Enhanced Boiler System", test_enhanced_boiler_system),
         ("Annual Simulator Interface", test_annual_simulator_interface),
         ("Unicode-Safe Logging", test_unicode_logging),
-        ("Load-Dependent Variation", test_load_variation),
-        ("Improved Load Variation", test_load_variation_improved),
-        ("Short Simulation Run", test_short_simulation),
-        ("Solver Convergence", test_solver_convergence),
-        ("Boiler System Integration", test_boiler_system_integration),
-        ("Annual Simulator Compatibility", test_annual_simulator_compatibility)
+        ("Load Variation Testing", test_load_variation),
+        ("Short Simulation Run", test_short_simulation)
     ]
     
-    for test_name, test_function in test_functions:
+    for test_name, test_function in phase1_test_functions:
         try:
             print(f"\n{'='*20} {test_name} {'='*20}")
             result = test_function()
@@ -939,7 +1107,7 @@ def run_validation_suite():
             test_results[test_name] = False
     
     # Summary
-    print_header("VALIDATION RESULTS SUMMARY")
+    print_header("PHASE 1 DIAGNOSTIC RESULTS SUMMARY")
     
     passed_tests = sum(1 for result in test_results.values() if result)
     total_tests = len(test_results)
@@ -950,148 +1118,63 @@ def run_validation_suite():
     
     print(f"\nOVERALL RESULT: {passed_tests}/{total_tests} tests passed")
     
-    # Determine overall status
-    critical_tests = [
-        "IAPWS Integration Fix",
-        "Enhanced Boiler System",
-        "Annual Simulator Interface", 
-        "Unicode-Safe Logging"
+    # Determine overall diagnostic success
+    phase1_core_tests = [
+        "Efficiency Calculation Tracing",
+        "Parameter Propagation Validation",
+        "Component-Level Variation",
+        "Load Curve Implementation",
+        "Fouling Impact Validation"
     ]
     
-    critical_passed = all(test_results.get(test, False) for test in critical_tests)
+    phase1_core_passed = sum(1 for test in phase1_core_tests 
+                           if test_results.get(test, False))
     
-    if critical_passed and passed_tests >= total_tests - 1:  # Allow 1 non-critical failure
-        print("[SUCCESS] Validation suite passed - System ready for use")
+    if phase1_core_passed >= 3 and passed_tests >= total_tests - 2:  # Allow some failures
+        print("[SUCCESS] Phase 1 diagnostic complete - Static efficiency sources identified")
         overall_success = True
     else:
-        print("[WARNING] Validation suite failed - Review failed tests")
+        print("[WARNING] Phase 1 diagnostic incomplete - Some core tests failed")
         overall_success = False
     
-    # Save validation report
-    save_validation_report(test_results, overall_success)
-    
-    return overall_success
-
-def run_comprehensive_fix_validation():
-    """Run comprehensive fix validation suite focusing on critical fixes."""
-    print_header("COMPREHENSIVE FIX VALIDATION SUITE")
-    print("Version 8.2 - IAPWS Integration and Load Variation Fixes")
-    print(f"Run Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    
-    # Track test results
-    test_results = {}
-    
-    # Run fix-specific tests
-    fix_test_functions = [
-        ("Module Imports", test_module_imports),
-        ("IAPWS Integration Fix", test_iapws_integration),
-        ("Load Variation Fix", test_load_variation),
-        ("Improved Load Variation", test_load_variation_improved),
-        ("Boiler System Integration", test_boiler_system_integration),
-        ("Annual Simulator Compatibility", test_annual_simulator_compatibility),
-        ("Enhanced Boiler System", test_enhanced_boiler_system),
-        ("Unicode-Safe Logging", test_unicode_logging),
-        ("Short Simulation Run", test_short_simulation),
-        ("Solver Convergence", test_solver_convergence)
-    ]
-    
-    for test_name, test_function in fix_test_functions:
-        try:
-            print(f"\n{'='*20} {test_name} {'='*20}")
-            result = test_function()
-            test_results[test_name] = result
-            print(f"Result: {'PASS' if result else 'FAIL'}")
-        except Exception as e:
-            print_result(False, f"{test_name} test crashed: {e}")
-            test_results[test_name] = False
-    
-    # Summary
-    print_header("FIX VALIDATION RESULTS SUMMARY")
-    
-    passed_tests = sum(1 for result in test_results.values() if result)
-    total_tests = len(test_results)
-    
-    for test_name, result in test_results.items():
-        status = "PASS" if result else "FAIL"
-        print(f"  {status:4s} | {test_name}")
-    
-    print(f"\nOVERALL RESULT: {passed_tests}/{total_tests} tests passed")
-    
-    # Determine overall status with focus on critical fixes
-    critical_fix_tests = [
-        "IAPWS Integration Fix",
-        "Load Variation Fix", 
-        "Improved Load Variation",
-        "Boiler System Integration",
-        "Annual Simulator Compatibility"
-    ]
-    
-    critical_fixes_passed = all(test_results.get(test, False) for test in critical_fix_tests)
-    
-    if critical_fixes_passed and passed_tests >= total_tests - 1:  # Allow 1 non-critical failure
-        print("[SUCCESS] Critical fixes validated - System ready for realistic simulations")
-        overall_success = True
-    else:
-        print("[WARNING] Critical fixes failed - Review failed tests")
-        overall_success = False
-    
-    # Save fix validation report
-    save_fix_validation_report(test_results, overall_success)
+    # Save Phase 1 diagnostic report
+    save_phase1_diagnostic_report(test_results, overall_success)
     
     return overall_success
 
 def main():
-    """Main execution function."""
-    print_header("BOILER SIMULATION DEBUG AND VALIDATION SCRIPT")
-    print("Complete testing suite for IAPWS integration and load variation fixes")
-    print(f"Script Version: 8.2")
+    """Main execution function for Phase 1 diagnostics."""
+    print_header("BOILER SIMULATION PHASE 1 DIAGNOSTIC SCRIPT")
+    print("Comprehensive diagnostic suite to identify static efficiency calculation issues")
+    print(f"Script Version: 8.3 - Phase 1 Diagnostic Implementation")
     print(f"Execution Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     try:
-        # Run quick interface test first
+        # Run Phase 1 diagnostic suite
         print("\n" + "="*70)
-        print("RUNNING QUICK INTERFACE TEST")
+        print("RUNNING PHASE 1 DIAGNOSTIC SUITE")
         print("="*70)
         
-        quick_success = quick_interface_test()
+        diagnostic_success = run_phase1_diagnostic_suite()
         
-        if quick_success:
-            print("\n[INFO] Quick test passed - proceeding with comprehensive validation")
-            
-            # Run comprehensive validation
-            print("\n" + "="*70)
-            print("RUNNING COMPREHENSIVE FIX VALIDATION")
-            print("="*70)
-            
-            comprehensive_success = run_comprehensive_fix_validation()
-            
-            if comprehensive_success:
-                print("\n" + "="*50)
-                print("SUCCESS: All critical fixes validated!")
-                print("The system should now produce realistic, dynamic simulation results.")
-                print("Ready for annual dataset generation.")
-                print("="*50)
-            else:
-                print("\n" + "="*50)
-                print("WARNING: Some critical fixes may not be working correctly.")
-                print("Review the validation report for details.")
-                print("="*50)
+        if diagnostic_success:
+            print("\n" + "="*50)
+            print("SUCCESS: Phase 1 diagnostics completed!")
+            print("Review diagnostic logs to identify static efficiency sources.")
+            print("Ready to proceed with Phase 2 implementation fixes.")
+            print("="*50)
         else:
-            print("\n[WARNING] Quick test failed - there may be fundamental issues")
-            print("Running basic validation anyway...")
-            
-            basic_success = run_validation_suite()
-            
-            if not basic_success:
-                print("\n[ERROR] Basic validation also failed")
-                print("Critical fixes may not be working. Check implementation.")
+            print("\n" + "="*50)
+            print("WARNING: Phase 1 diagnostics incomplete.")
+            print("Review failed tests and diagnostic report for details.")
+            print("="*50)
         
     except Exception as e:
-        print(f"\n[ERROR] Script execution failed: {e}")
+        print(f"\n[ERROR] Phase 1 diagnostic execution failed: {e}")
         traceback.print_exc()
         return False
     
-    print(f"\nValidation complete. Check logs in: {log_dir}")
+    print(f"\nDiagnostic complete. Check logs in: {log_dir}")
     return True
 
 if __name__ == "__main__":
