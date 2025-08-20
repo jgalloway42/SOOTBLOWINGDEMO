@@ -1,0 +1,394 @@
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,589 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+
+🔥 CORRECTED FOULING DISTRIBUTION:
+Section              Base Rate  Description
+-----------------------------------------------------------------
+furnace_walls        4.0        Maximum fouling - primary soot formation
+generating_bank      3.2        High fouling - hot soot deposition
+superheater_primary  2.5        Moderate-high fouling - transitional zone
+superheater_secondary 2.0        Moderate fouling - cooling particles
+economizer_primary   1.0        Moderate fouling - reduced deposition
+economizer_secondary 0.6        Low fouling - cool gas conditions
+air_heater           0.2        Minimal fouling - cold gas, low adhesion
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 49: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,627 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+
+🔥 CORRECTED FOULING DISTRIBUTION:
+Section              Base Rate  Description
+-----------------------------------------------------------------
+furnace_walls        4.0        Maximum fouling - primary soot formation
+generating_bank      3.2        High fouling - hot soot deposition
+superheater_primary  2.5        Moderate-high fouling - transitional zone
+superheater_secondary 2.0        Moderate fouling - cooling particles
+economizer_primary   1.0        Moderate fouling - reduced deposition
+economizer_secondary 0.6        Low fouling - cool gas conditions
+air_heater           0.2        Minimal fouling - cold gas, low adhesion
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 49: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,666 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+
+🔥 CORRECTED FOULING DISTRIBUTION:
+Section              Base Rate  Description
+-----------------------------------------------------------------
+furnace_walls        4.0        Maximum fouling - primary soot formation
+generating_bank      3.2        High fouling - hot soot deposition
+superheater_primary  2.5        Moderate-high fouling - transitional zone
+superheater_secondary 2.0        Moderate fouling - cooling particles
+economizer_primary   1.0        Moderate fouling - reduced deposition
+economizer_secondary 0.6        Low fouling - cool gas conditions
+air_heater           0.2        Minimal fouling - cold gas, low adhesion
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 49: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,705 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+
+🔥 CORRECTED FOULING DISTRIBUTION:
+Section              Base Rate  Description
+-----------------------------------------------------------------
+furnace_walls        4.0        Maximum fouling - primary soot formation
+generating_bank      3.2        High fouling - hot soot deposition
+superheater_primary  2.5        Moderate-high fouling - transitional zone
+superheater_secondary 2.0        Moderate fouling - cooling particles
+economizer_primary   1.0        Moderate fouling - reduced deposition
+economizer_secondary 0.6        Low fouling - cool gas conditions
+air_heater           0.2        Minimal fouling - cold gas, low adhesion
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 49: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,744 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+
+🔥 CORRECTED FOULING DISTRIBUTION:
+Section              Base Rate  Description
+-----------------------------------------------------------------
+furnace_walls        4.0        Maximum fouling - primary soot formation
+generating_bank      3.2        High fouling - hot soot deposition
+superheater_primary  2.5        Moderate-high fouling - transitional zone
+superheater_secondary 2.0        Moderate fouling - cooling particles
+economizer_primary   1.0        Moderate fouling - reduced deposition
+economizer_secondary 0.6        Low fouling - cool gas conditions
+air_heater           0.2        Minimal fouling - cold gas, low adhesion
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 49: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 208, in generate_annual_data
+    operation_data = self._simulate_boiler_operation(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 549, in _simulate_boiler_operation
+    solve_results = self.boiler.solve_enhanced_system(max_iterations=20, tolerance=15.0)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 356, in solve_enhanced_system
+    self._log_final_results(converged, final_performance)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\boiler_system.py", line 635, in _log_final_results
+    logger.info(f"✓ Energy balance within acceptable limits")
+Message: '✓ Energy balance within acceptable limits'
+Arguments: ()
+2025-08-19 20:47:12,782 - annual_boiler_simulator - ERROR - Boiler system solve failed: 'converged'
+2025-08-19 20:47:13,000 - annual_boiler_simulator - INFO - Enhanced annual simulation completed with IAPWS integration
+2025-08-19 20:47:13,000 - annual_boiler_simulator - INFO - Total records generated: 8,760
+2025-08-19 20:47:13,001 - annual_boiler_simulator - INFO - Simulation statistics:
+2025-08-19 20:47:13,001 - annual_boiler_simulator - INFO -   Total hours simulated: 8760
+2025-08-19 20:47:13,001 - annual_boiler_simulator - INFO -   Solver failures: 8760
+2025-08-19 20:47:13,001 - annual_boiler_simulator - INFO -   Efficiency warnings: 0
+2025-08-19 20:47:13,002 - annual_boiler_simulator - INFO -   Temperature warnings: 0
+2025-08-19 20:47:13,002 - annual_boiler_simulator - INFO - IAPWS-based efficiency results:
+2025-08-19 20:47:13,003 - annual_boiler_simulator - INFO -   Mean efficiency: 82.0%
+2025-08-19 20:47:13,003 - annual_boiler_simulator - INFO -   Efficiency range: 82.0% to 82.0%
+2025-08-19 20:47:13,003 - annual_boiler_simulator - INFO -   Standard deviation: 0.0%
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2705' in position 59: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 247, in generate_annual_data
+    self._log_simulation_statistics(df)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 812, in _log_simulation_statistics
+    logger.info("✅ Target efficiency range achieved (75-88%)")
+Message: '✅ Target efficiency range achieved (75-88%)'
+Arguments: ()
+2025-08-19 20:47:13,003 - annual_boiler_simulator - INFO - ✅ Target efficiency range achieved (75-88%)
+2025-08-19 20:47:13,006 - annual_boiler_simulator - INFO - Stack temperature results:
+2025-08-19 20:47:13,006 - annual_boiler_simulator - INFO -   Mean: 280°F
+2025-08-19 20:47:13,006 - annual_boiler_simulator - INFO -   Standard deviation: 0°F
+2025-08-19 20:47:13,006 - annual_boiler_simulator - INFO -   Unique values: 1
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\sesa703683\AppData\Local\Programs\Python\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 62-63: character maps to <undefined>
+Call stack:
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 550, in <module>
+    main()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 490, in main
+    results = run_full_simulation()
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\run_annual_simulation.py", line 272, in run_full_simulation
+    annual_data = simulator.generate_annual_data(
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 247, in generate_annual_data
+    self._log_simulation_statistics(df)
+  File "c:\Users\sesa703683\Documents\workspace\SootblowingDemoJune2025\src\models\complete_boiler_simulation\annual_boiler_simulator.py", line 830, in _log_simulation_statistics
+    logger.warning("⚠️ Stack temperature variation may be too low")
+Message: '⚠️ Stack temperature variation may be too low'
+Arguments: ()
+2025-08-19 20:47:13,006 - annual_boiler_simulator - WARNING - ⚠️ Stack temperature variation may be  too low
+ too low
+
+💾 STEP 3: Saving Enhanced Dataset...
+2025-08-19 20:47:13,029 - __main__ - INFO - Saving annual dataset
+2025-08-19 20:47:13,616 - annual_boiler_simulator - INFO - Enhanced annual dataset saved with IAPWS integration:
+2025-08-19 20:47:13,617 - annual_boiler_simulator - INFO -   Data file: data\generated\annual_datasets\massachusetts_boiler_annual_20250819_204713.csv
+2025-08-19 20:47:13,617 - annual_boiler_simulator - INFO -   Metadata: outputs\metadata\massachusetts_boiler_annual_metadata_20250819_204713.txt
+2025-08-19 20:47:13,617 - annual_boiler_simulator - INFO -   Records: 8,760
+2025-08-19 20:47:13,621 - annual_boiler_simulator - INFO -   Size: 10.4 MB
+2025-08-19 20:47:13,621 - annual_boiler_simulator - INFO -   Average efficiency: 82.0%
+2025-08-19 20:47:13,622 - annual_boiler_simulator - INFO -   Stack temp variation: 0.0°F std dev 
+
+📊 STEP 4: Performing Enhanced Analysis...
+📊 Boiler Data Analyzer initialized
+   Data period: 2024-01-01 00:00:00 to 2024-12-30 23:00:00
+   Total records: 8,760
+   Sections tracked: 7
+
+📈 Generating comprehensive annual analysis report...
+📊 Generating analysis plots...
+📊 Analysis plots saved as 'annual_boiler_analysis.png'
+
+================================================================================
+ANNUAL BOILER OPERATION ANALYSIS REPORT
+================================================================================
+
+📊 OVERALL PERFORMANCE:
+   Average Efficiency: 82.0% ± 0.0%
+   Average Load Factor: 70.2%
+   Operating Hours: 35,040
+   High Load Hours (>85%): 10,268
+
+🌡️ SEASONAL PERFORMANCE:
+   Best Season: fall (Efficiency: 82.0%)
+   Worst Season: fall
+   Seasonal Efficiency Range: 0.00%
+
+⚡ COAL QUALITY IMPACT:
+   Best Coal Quality: high_quality
+   Worst Coal Quality: low_quality
+   Quality Impact: 0.00% efficiency difference
+
+🎯 KEY OPTIMIZATION OPPORTUNITIES:
+   1. Soot Blowing: Focus on furnace_walls
+   2. Coal Quality: Increase high_quality usage
+      Potential gain: 0.00%
+   3. Load Optimization: Target (0.399, 0.51]
+
+💡 RECOMMENDATIONS:
+   • Optimize soot blowing frequency for high-fouling sections
+   • Negotiate coal contracts to increase high-quality fuel percentage
+   • Adjust operating loads to maximize efficiency
+   • Plan major maintenance during lowest-demand seasons
+   • Monitor stack gas emissions for environmental compliance
+   • Consider combustion optimization to reduce CO and improve efficiency
+2025-08-20 08:24:02,405 - __main__ - INFO - Analysis completed successfully
+2025-08-20 08:24:02,405 - __main__ - INFO - Generating final summary
+
+🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉�🎉�
+ENHANCED ANNUAL SIMULATION COMPLETE - IAPWS INTEGRATION!
+🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉�🎉�
+
+📊 ENHANCED DATASET SUMMARY:
+   📄 File: data\generated\annual_datasets\massachusetts_boiler_annual_20250819_204713.csv       
+   📅 Period: 2024-01-01 00:00:00 to 2024-12-30 23:00:00
+   📈 Records: 8,760 data points
+   📋 Columns: 151 variables
+   💾 Size: 10.4 MB
+
+⚡ IAPWS-BASED EFFICIENCY VALIDATION:
+   🎯 Target: 75-88% (industrial boiler range)
+   📊 Achieved: 82.0% ± 0.0%
+   📈 Range: 82.0% to 82.0%
+   ✅ EFFICIENCY TARGET ACHIEVED - IAPWS INTEGRATION SUCCESSFUL!
+2025-08-20 08:24:02,413 - __main__ - INFO - Efficiency target achieved: 82.0%
+
+🔥 STACK TEMPERATURE VALIDATION:
+   🌡️ Range: 280°F to 280°F
+   📊 Mean ± Std: 280°F ± 0°F
+   🎯 Unique values: 1
+   ⚠️ Stack temperature variation may need improvement
+2025-08-20 08:24:02,414 - __main__ - WARNING - Stack temperature variation: 0.0°F std dev, 1 unique values
+
+📈 CONTAINERBOARD MILL LOAD VALIDATION:
+   📊 Range: 40.0% to 95.0%
+   📊 Mean ± Std: 70.2% ± 18.8%
+   ✅ CONTAINERBOARD MILL PATTERNS ACHIEVED!
+2025-08-20 08:24:02,415 - __main__ - INFO - Load patterns successful: 40.0%-95.0%, std=18.8%     
+
+🔥 IAPWS STEAM PROPERTY VALIDATION:
+   💨 Steam Enthalpy (700°F): 1350 Btu/lb
+   💧 Feedwater Enthalpy (220°F): 188 Btu/lb
+   ⚡ Specific Energy: 1162 Btu/lb
+   🌡️ Steam Superheat: 100°F
+   ✅ INDUSTRY-STANDARD IAPWS-97 PROPERTIES
+
+🏭 CONTAINERBOARD MILL CHARACTERISTICS:
+   🍂 Fall (peak season): 76.6%
+   ❄️ Winter (post-holiday): 66.4%
+   🌸 Spring (ramp-up): 69.9%
+   ☀️ Summer (moderate): 67.7%
+   📈 Peak month: 11 (78.8%)
+   📉 Low month: 1 (61.3%)
+
+📊 PERFORMANCE METRICS:
+   🌡️ Average Steam Temp: 700°F
+   💨 Average NOx: 20.9 lb/hr
+   🌫️ Average CO2: 15.5%
+
+🧹 SOOT BLOWING ACTIVITY:
+   📅 Total cleaning events: 1459
+   📊 Cleaning frequency: 16.7% of time
+
+⚖️ ENERGY BALANCE VALIDATION:
+   📊 Average error: 3.0%
+   ✅ ENERGY BALANCE ACCEPTABLE (<5%)
+
+📁 ENHANCED FILE ORGANIZATION:
+   📊 Dataset: data/generated/annual_datasets/
+   📋 Metadata: outputs/metadata/
+   📝 Simulation logs: logs/simulation/
+ion patterns
+   ✅ Physics-based credibility for commercial demo
+2025-08-20 08:24:02,421 - __main__ - INFO - Full simulation completed successfully
+
+✅ Full simulation completed successfully!
+2025-08-20 08:24:02,423 - __main__ - INFO - Full simulation completed successfully
+
+🏁 Enhanced simulation runner complete.
+📝 Check logs in logs/ directory for detailed information
+2025-08-20 08:24:02,423 - __main__ - INFO - Enhanced simulation runner completed
