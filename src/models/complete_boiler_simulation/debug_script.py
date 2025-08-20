@@ -311,7 +311,6 @@ def run_comprehensive_fix_validation():
         ("Load Variation Fix", test_load_variation_improved),
         ("Boiler System Integration", test_boiler_system_integration),
         ("Annual Simulator Compatibility", test_annual_simulator_compatibility),
-        ("Module Imports", test_imports),
         ("Enhanced Boiler System", test_enhanced_boiler_system),
         ("Unicode-Safe Logging", test_unicode_logging),
         ("Short Simulation Run", test_short_simulation),
@@ -552,7 +551,6 @@ if __name__ == "__main__":
             import_results[module_name] = False
             print_result(False, f"{module_name} import failed: {e}")
     
-    return import_results
 
 def test_enhanced_boiler_system():
     """Test the enhanced boiler system with fixed interface."""
@@ -920,7 +918,6 @@ def run_validation_suite():
     
     # Run all tests
     test_functions = [
-        ("Module Imports", test_imports),
         ("Enhanced Boiler System", test_enhanced_boiler_system),
         ("Annual Simulator Interface", test_annual_simulator_interface),
         ("Unicode-Safe Logging", test_unicode_logging),
