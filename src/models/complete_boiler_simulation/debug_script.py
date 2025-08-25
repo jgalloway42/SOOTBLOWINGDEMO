@@ -147,13 +147,13 @@ def test_phase3_load_variation_comprehensive():
             print(f"  {'='*60}")
             print(f"  EFFICIENCY ANALYSIS:")
             print_diagnostic("STAT", f"Range: {eff_range:.3f} ({eff_range:.1%})")
-            print_diagnostic("STAT", f"Mean: {eff_mean:.1%} ± {eff_std:.2%}")
+            print_diagnostic("STAT", f"Mean: {eff_mean:.1%} +/- {eff_std:.2%}")
             print_diagnostic("STAT", f"Min: {min(efficiencies):.1%} at {load_factors[efficiencies.index(min(efficiencies))]:.1f} load")
             print_diagnostic("STAT", f"Max: {max(efficiencies):.1%} at {load_factors[efficiencies.index(max(efficiencies))]:.1f} load")
             
             print(f"\n  STACK TEMPERATURE ANALYSIS:")
-            print_diagnostic("STAT", f"Range: {stack_range:.1f}°F")
-            print_diagnostic("STAT", f"Mean: {stack_mean:.0f}°F ± {stack_std:.1f}°F")
+            print_diagnostic("STAT", f"Range: {stack_range:.1f}F")
+            print_diagnostic("STAT", f"Mean: {stack_mean:.0f}F +/- {stack_std:.1f}F")
             
             print(f"\n  ENERGY BALANCE ANALYSIS:")
             print_diagnostic("STAT", f"Mean error: {energy_mean:.1%}")
@@ -163,14 +163,14 @@ def test_phase3_load_variation_comprehensive():
             # PHASE 3 SUCCESS CRITERIA
             efficiency_variation_maintained = 0.10 <= eff_range <= 0.15  # Maintain 10-15% range
             energy_balance_fixed = energy_mean < 0.05 and energy_max < 0.08  # <5% avg, <8% max
-            stack_variation_good = stack_range >= 80  # ≥80°F variation
+            stack_variation_good = stack_range >= 80  # >=80F variation
             all_converged = all(r['converged'] for r in load_results)
             realistic_efficiency_range = 0.7 <= min(efficiencies) <= 0.9 and max(efficiencies) <= 0.9
             
             print(f"\n  PHASE 3 SUCCESS CRITERIA:")
             print_result(efficiency_variation_maintained, f"Efficiency variation maintained: {eff_range:.1%} (target: 10-15%)")
             print_result(energy_balance_fixed, f"Energy balance fixed: avg={energy_mean:.1%}, max={energy_max:.1%} (target: <5%, <8%)")
-            print_result(stack_variation_good, f"Stack temperature variation: {stack_range:.0f}°F (target: ≥80°F)")
+            print_result(stack_variation_good, f"Stack temperature variation: {stack_range:.0f}F (target: >=80F)")
             print_result(all_converged, f"All scenarios converged: {all_converged}")
             print_result(realistic_efficiency_range, f"Realistic efficiency range: {min(efficiencies):.1%} to {max(efficiencies):.1%}")
             
@@ -258,9 +258,9 @@ def test_phase3_component_heat_transfer():
                         realistic_U = 1.0 <= avg_U <= 100.0
                         
                         if positive_Q and realistic_Q and realistic_U:
-                            print_diagnostic("VALID", f"✓ FIXED: Q={total_Q/1e6:.1f}MMBtu/hr, U_avg={avg_U:.1f}")
+                            print_diagnostic("VALID", f"[CHECK] FIXED: Q={total_Q/1e6:.1f}MMBtu/hr, U_avg={avg_U:.1f}")
                         else:
-                            print_diagnostic("ERROR", f"✗ STILL BROKEN: Q={total_Q}, U_avg={avg_U}")
+                            print_diagnostic("ERROR", f"[X] STILL BROKEN: Q={total_Q}, U_avg={avg_U}")
                             section_success = False
                             
                     except Exception as e:
@@ -360,12 +360,12 @@ def test_phase3_combustion_enhancement():
             print_diagnostic("STAT", f"Load Range: {min(load_factors):.1f} to {max(load_factors):.1f}")
             
             # PHASE 3 SUCCESS CRITERIA
-            target_variation_achieved = eff_range >= 0.05  # ≥5% variation
+            target_variation_achieved = eff_range >= 0.05  # >=5% variation
             realistic_efficiency_range = 0.88 <= eff_min <= 0.95 and 0.92 <= eff_max <= 0.98
             proper_load_response = len([e for e in efficiencies if 0.9 <= e <= 0.98]) >= 2  # Some high efficiency values
             
             print(f"\n  PHASE 3 COMBUSTION SUCCESS CRITERIA:")
-            print_result(target_variation_achieved, f"Target variation achieved: {eff_range:.2%} (target: ≥5%)")
+            print_result(target_variation_achieved, f"Target variation achieved: {eff_range:.2%} (target: >=5%)")
             print_result(realistic_efficiency_range, f"Realistic efficiency range: {eff_min:.1%} to {eff_max:.1%}")
             print_result(proper_load_response, f"Proper load response curve")
             
@@ -544,25 +544,25 @@ def main():
     
     print("Starting Phase 3 validation testing...")
     print("This will validate all critical fixes:")
-    print("  ✓ Energy balance errors: 33% → <5%")
-    print("  ✓ Component Q values: Negative → Positive realistic")
-    print("  ✓ Combustion variation: 2.7% → ≥5%")
-    print("  ✓ Efficiency variation: Maintained at 11.6%")
+    print("  [CHECK] Energy balance errors: 33% -> <5%")
+    print("  [CHECK] Component Q values: Negative -> Positive realistic")
+    print("  [CHECK] Combustion variation: 2.7% -> >=5%")
+    print("  [CHECK] Efficiency variation: Maintained at 11.6%")
     
     try:
         # Generate comprehensive validation report
         overall_success, report_file = generate_phase3_validation_report()
         
         if overall_success:
-            print_header("🎯 PHASE 3 VALIDATION SUCCESSFUL!")
+            print_header("[SUCCESS] PHASE 3 VALIDATION SUCCESSFUL!")
             print("All critical fixes have been validated:")
-            print("  ✅ Energy balance errors fixed")
-            print("  ✅ Component heat transfer fixed")  
-            print("  ✅ Combustion efficiency variation enhanced")
-            print("  ✅ System integration working")
+            print("  [CHECK] Energy balance errors fixed")
+            print("  [CHECK] Component heat transfer fixed")  
+            print("  [CHECK] Combustion efficiency variation enhanced")
+            print("  [CHECK] System integration working")
             print("\nPhase 3 objectives ACHIEVED!")
         else:
-            print_header("❌ PHASE 3 VALIDATION FAILED")
+            print_header("[FAILED] PHASE 3 VALIDATION FAILED")
             print("Some fixes require additional work.")
             print("Check the validation report for details.")
         
