@@ -103,72 +103,60 @@ class EnhancedCompleteBoilerSystem:
         self.logger = logging.getLogger(f"{__name__}.EnhancedCompleteBoilerSystem")
     
     def _initialize_sections(self) -> Dict[str, BoilerSection]:
-        """Initialize boiler sections with proper configuration."""
+        """Initialize boiler sections with correct parameter structure."""
         
         sections = {}
         
-        # Furnace section (radiant heat transfer)
+        # Furnace section - FIXED parameter structure
         sections['furnace'] = BoilerSection(
             name='furnace_walls',
-            section_type='radiant',
+            num_segments=15,
             tube_count=400,
-            tube_length=40,
-            tube_od=3.0,
-            tube_id=2.6,
-            design_temp=2800
+            tube_length=40.0,
+            tube_od=3.0
         )
         
-        # Superheater sections
+        # Superheater sections - FIXED parameter structure
         sections['superheater_primary'] = BoilerSection(
             name='superheater_primary',
-            section_type='convective',
+            num_segments=12,
             tube_count=200,
-            tube_length=20,
-            tube_od=2.0,
-            tube_id=1.6,
-            design_temp=2200
+            tube_length=20.0,
+            tube_od=2.0
         )
         
         sections['superheater_secondary'] = BoilerSection(
-            name='superheater_secondary', 
-            section_type='convective',
+            name='superheater_secondary',
+            num_segments=10,
             tube_count=150,
-            tube_length=15,
-            tube_od=1.75,
-            tube_id=1.35,
-            design_temp=1800
+            tube_length=15.0,
+            tube_od=1.75
         )
         
-        # Generating bank
+        # Generating bank - FIXED parameter structure
         sections['generating_bank'] = BoilerSection(
             name='generating_bank',
-            section_type='convective',
+            num_segments=12,
             tube_count=300,
-            tube_length=25,
-            tube_od=2.25,
-            tube_id=1.85,
-            design_temp=1400
+            tube_length=25.0,
+            tube_od=2.25
         )
         
-        # Economizer sections
+        # Economizer sections - FIXED parameter structure
         sections['economizer_primary'] = BoilerSection(
             name='economizer_primary',
-            section_type='convective',
+            num_segments=10,
             tube_count=250,
-            tube_length=18,
-            tube_od=2.0,
-            tube_id=1.6,
-            design_temp=800
+            tube_length=18.0,
+            tube_od=2.0
         )
         
         sections['economizer_secondary'] = BoilerSection(
             name='economizer_secondary',
-            section_type='convective',
+            num_segments=8,
             tube_count=200,
-            tube_length=15,
-            tube_od=1.75,
-            tube_id=1.35,
-            design_temp=600
+            tube_length=15.0,
+            tube_od=1.75
         )
         
         return sections
