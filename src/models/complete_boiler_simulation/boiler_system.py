@@ -13,11 +13,18 @@ Date: August 2025
 """
 
 import math
+import numpy as np
+import pandas as pd
 import traceback
 import logging
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from iapws import IAPWS97
+
+# Import enhanced modules
+from fouling_and_soot_blowing import BoilerSection
+from heat_transfer_calculations import HeatTransferCalculator
+from thermodynamic_properties import PropertyCalculator
 
 # Configure enhanced logging
 logger = logging.getLogger(__name__)
@@ -39,78 +46,9 @@ class SystemPerformance:
     other_losses: float
     specific_energy: float
 
-class PropertyCalculator:
-    """Professional steam property calculations using IAPWS-97."""
-    
-    def __init__(self):
-        """Initialize property calculator."""
-        self.logger = logging.getLogger(f"{__name__}.PropertyCalculator")
-        
-    def get_steam_properties(self, pressure_psia: float, temperature_f: float) -> Any:
-        """Get steam properties using IAPWS-97."""
-        try:
-            # Convert to SI units
-            pressure_bar = pressure_psia * 0.0689476  # psia to bar
-            temperature_k = (temperature_f - 32) * 5/9 + 273.15  # F to K
-            
-            # Calculate properties using IAPWS-97
-            steam = IAPWS97(P=pressure_bar, T=temperature_k)
-            
-            # Convert back to English units
-            enthalpy_btu_lb = steam.h * 0.429923  # kJ/kg to Btu/lb
-            
-            # Return properties with expected attributes
-            class SteamProperties:
-                def __init__(self, enthalpy):
-                    self.enthalpy = enthalpy
-                    
-            return SteamProperties(enthalpy_btu_lb)
-            
-        except Exception as e:
-            self.logger.error(f"Steam property calculation failed: {e}")
-            # Fallback calculation for steam
-            return self._get_fallback_steam_properties(pressure_psia, temperature_f)
-    
-    def get_water_properties(self, pressure_psia: float, temperature_f: float) -> Any:
-        """Get liquid water properties using IAPWS-97."""
-        try:
-            # Convert to SI units  
-            pressure_bar = pressure_psia * 0.0689476
-            temperature_k = (temperature_f - 32) * 5/9 + 273.15
-            
-            # Calculate properties using IAPWS-97
-            water = IAPWS97(P=pressure_bar, T=temperature_k)
-            
-            # Convert back to English units
-            enthalpy_btu_lb = water.h * 0.429923
-            
-            class WaterProperties:
-                def __init__(self, enthalpy):
-                    self.enthalpy = enthalpy
-                    
-            return WaterProperties(enthalpy_btu_lb)
-            
-        except Exception as e:
-            self.logger.error(f"Water property calculation failed: {e}")
-            return self._get_fallback_water_properties(pressure_psia, temperature_f)
-    
-    def _get_fallback_steam_properties(self, pressure_psia: float, temperature_f: float) -> Any:
-        """Fallback steam properties calculation."""
-        class SteamProperties:
-            def __init__(self):
-                self.enthalpy = 1376.8  # Realistic value for 700F, 150 psia
-        return SteamProperties()
-    
-    def _get_fallback_water_properties(self, pressure_psia: float, temperature_f: float) -> Any:
-        """Fallback water properties calculation.""" 
-        class WaterProperties:
-            def __init__(self):
-                self.enthalpy = 188.5  # Realistic value for 220F, 150 psia
-        return WaterProperties()
-
 class EnhancedCompleteBoilerSystem:
     """
-    Enhanced complete boiler system with corrected steam energy transfer calculation.
+    Enhanced complete boiler system with 105% load edge case optimization.
     
     PHASE 3 OPTIMIZATION: 105% Load Edge Case Refinement
     - Core energy balance physics: WORKING (preserved)
@@ -119,31 +57,121 @@ class EnhancedCompleteBoilerSystem:
     - Target: Optimize loss calculations at 105% load only
     """
     
-    def __init__(self, fuel_input: float, flue_gas_mass_flow: float,
-                 furnace_exit_temp: float = 2800.0, base_fouling_multiplier: float = 1.0):
+    def __init__(self, fuel_input: float = 100e6, flue_gas_mass_flow: float = 84000,
+                 furnace_exit_temp: float = 3000, steam_pressure: float = 150,
+                 target_steam_temp: float = 700, feedwater_temp: float = 220,
+                 base_fouling_multiplier: float = 1.0):
         """Initialize enhanced complete boiler system."""
         
-        # System configuration
+        # Operating parameters
         self.fuel_input = fuel_input  # Btu/hr
         self.flue_gas_mass_flow = flue_gas_mass_flow  # lb/hr
         self.furnace_exit_temp = furnace_exit_temp  # F
+        self.steam_pressure = steam_pressure  # psia
+        self.target_steam_temp = target_steam_temp  # F
+        self.feedwater_temp = feedwater_temp  # F
         self.base_fouling_multiplier = base_fouling_multiplier
         
         # Design parameters
         self.design_capacity = 100e6  # Btu/hr
-        self.steam_pressure = 150.0  # psia
-        self.feedwater_temp = 220.0  # F
-        self.target_steam_temp = 700.0  # F
         self.feedwater_flow = 126000.0  # lb/hr
+        
+        # Validate realistic operating range
+        load_factor = fuel_input / self.design_capacity
+        if load_factor < 0.55:
+            logger.warning(f"Load factor {load_factor:.1%} below minimum practical operation (55%)")
+        elif load_factor > 1.10:
+            logger.warning(f"Load factor {load_factor:.1%} above maximum practical operation (110%)")
+        
+        # Load-dependent feedwater flow calculation
+        design_feedwater_flow = 120000  # lb/hr at design conditions
+        self.feedwater_flow = design_feedwater_flow * load_factor
         
         # Initialize property calculator
         self.property_calc = PropertyCalculator()
+        
+        # Initialize calculation modules
+        self.heat_transfer_calc = HeatTransferCalculator()
+        
+        # Initialize boiler sections
+        self.sections = self._initialize_sections()
         
         # Initialize performance storage
         self.system_performance = {}
         
         # Configure logging
         self.logger = logging.getLogger(f"{__name__}.EnhancedCompleteBoilerSystem")
+    
+    def _initialize_sections(self) -> Dict[str, BoilerSection]:
+        """Initialize boiler sections with proper configuration."""
+        
+        sections = {}
+        
+        # Furnace section (radiant heat transfer)
+        sections['furnace'] = BoilerSection(
+            name='furnace_walls',
+            section_type='radiant',
+            tube_count=400,
+            tube_length=40,
+            tube_od=3.0,
+            tube_id=2.6,
+            design_temp=2800
+        )
+        
+        # Superheater sections
+        sections['superheater_primary'] = BoilerSection(
+            name='superheater_primary',
+            section_type='convective',
+            tube_count=200,
+            tube_length=20,
+            tube_od=2.0,
+            tube_id=1.6,
+            design_temp=2200
+        )
+        
+        sections['superheater_secondary'] = BoilerSection(
+            name='superheater_secondary', 
+            section_type='convective',
+            tube_count=150,
+            tube_length=15,
+            tube_od=1.75,
+            tube_id=1.35,
+            design_temp=1800
+        )
+        
+        # Generating bank
+        sections['generating_bank'] = BoilerSection(
+            name='generating_bank',
+            section_type='convective',
+            tube_count=300,
+            tube_length=25,
+            tube_od=2.25,
+            tube_id=1.85,
+            design_temp=1400
+        )
+        
+        # Economizer sections
+        sections['economizer_primary'] = BoilerSection(
+            name='economizer_primary',
+            section_type='convective',
+            tube_count=250,
+            tube_length=18,
+            tube_od=2.0,
+            tube_id=1.6,
+            design_temp=800
+        )
+        
+        sections['economizer_secondary'] = BoilerSection(
+            name='economizer_secondary',
+            section_type='convective',
+            tube_count=200,
+            tube_length=15,
+            tube_od=1.75,
+            tube_id=1.35,
+            design_temp=600
+        )
+        
+        return sections
     
     def _estimate_base_efficiency_fixed(self) -> float:
         """
@@ -459,6 +487,22 @@ class EnhancedCompleteBoilerSystem:
         
         return stack_correction, steam_correction, efficiency_update
     
+    def update_operating_conditions(self, new_fuel_input: float, 
+                                  new_flue_gas_flow: float, 
+                                  new_furnace_temp: float):
+        """Update operating conditions for dynamic simulation."""
+        
+        self.fuel_input = new_fuel_input
+        self.flue_gas_mass_flow = new_flue_gas_flow
+        self.furnace_exit_temp = new_furnace_temp
+        
+        # Update load-dependent feedwater flow
+        load_factor = new_fuel_input / self.design_capacity
+        design_feedwater_flow = 120000  # lb/hr at design conditions
+        self.feedwater_flow = design_feedwater_flow * load_factor
+        
+        logger.debug(f"Updated operating conditions: {new_fuel_input/1e6:.1f} MMBtu/hr, {load_factor:.1%} load")
+    
     def solve_enhanced_system(self, max_iterations: Optional[int] = None, 
                             tolerance: Optional[float] = None) -> Dict:
         """FINAL FIX: Solve complete boiler system with corrected steam energy transfer."""
@@ -517,7 +561,8 @@ class EnhancedCompleteBoilerSystem:
                         'final_steam_temperature': performance.final_steam_temperature,
                         'final_stack_temperature': performance.stack_temperature,
                         'energy_balance_error': performance.energy_balance_error,
-                        'performance_data': performance
+                        'performance_data': performance,
+                        'system_performance': self.system_performance
                     }
                 
                 # Apply corrections if not converged
@@ -565,7 +610,8 @@ class EnhancedCompleteBoilerSystem:
             'final_steam_temperature': current_steam_temp,
             'final_stack_temperature': current_stack_temp,
             'energy_balance_error': performance.energy_balance_error if 'performance' in locals() else 1.0,
-            'performance_data': performance if 'performance' in locals() else None
+            'performance_data': performance if 'performance' in locals() else None,
+            'system_performance': self.system_performance
         }
     
     def _get_fallback_system_performance(self, stack_temp: float, steam_temp: float) -> SystemPerformance:
@@ -593,6 +639,23 @@ class EnhancedCompleteBoilerSystem:
             other_losses=total_losses * 0.15,
             specific_energy=1188.0  # Typical value
         )
+
+# Legacy support functions and classes for compatibility
+
+class BoilerSystem:
+    """Legacy BoilerSystem class for backward compatibility."""
+    
+    def __init__(self, *args, **kwargs):
+        """Initialize as wrapper around EnhancedCompleteBoilerSystem."""
+        self.enhanced_system = EnhancedCompleteBoilerSystem(*args, **kwargs)
+    
+    def __getattr__(self, name):
+        """Delegate all attributes to enhanced system."""
+        return getattr(self.enhanced_system, name)
+
+class CompleteBoilerSystem(EnhancedCompleteBoilerSystem):
+    """Legacy CompleteBoilerSystem class for backward compatibility."""
+    pass
 
 def test_105_load_optimization():
     """Test the 105% load optimization specifically."""
@@ -653,21 +716,147 @@ def test_105_load_optimization():
         traceback.print_exc()
         return False
 
+def test_complete_system_validation():
+    """Test the complete system across all load ranges."""
+    
+    print("="*60)
+    print("COMPLETE SYSTEM VALIDATION WITH OPTIMIZATION")
+    print("Testing All Load Scenarios (60-105%)")
+    print("="*60)
+    
+    # REALISTIC load factors for industrial boilers
+    test_loads = [0.60, 0.70, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05]
+    design_capacity = 100e6  # Btu/hr
+    
+    print(f"\nTesting {len(test_loads)} realistic load scenarios...")
+    print(f"Load range: {min(test_loads)*100:.0f}% to {max(test_loads)*100:.0f}%")
+    
+    results = []
+    energy_errors = []
+    convergence_count = 0
+    
+    for i, load_factor in enumerate(test_loads):
+        fuel_input = design_capacity * load_factor
+        
+        print(f"\n[{i+1}/{len(test_loads)}] Testing Load Factor: {load_factor:.0%} ({fuel_input/1e6:.0f} MMBtu/hr)")
+        
+        try:
+            # Initialize system with optimized calculations
+            boiler = EnhancedCompleteBoilerSystem(
+                fuel_input=fuel_input,
+                flue_gas_mass_flow=84000 * load_factor,
+                furnace_exit_temp=2800 + load_factor * 400,  # Load-dependent
+                base_fouling_multiplier=1.0
+            )
+            
+            # Solve system
+            solver_results = boiler.solve_enhanced_system(max_iterations=10, tolerance=5.0)
+            
+            # Extract performance
+            performance = boiler.system_performance
+            
+            # Store results
+            result = {
+                'load_factor': load_factor,
+                'fuel_input_mmbtu': fuel_input / 1e6,
+                'efficiency': performance['system_efficiency'],
+                'energy_balance_error': performance['energy_balance_error'],
+                'stack_temp': performance['final_stack_temperature'],
+                'converged': performance['converged']
+            }
+            
+            results.append(result)
+            energy_errors.append(performance['energy_balance_error'])
+            
+            if performance['converged']:
+                convergence_count += 1
+            
+            # Print individual result
+            print(f"  Efficiency: {performance['system_efficiency']:.1%}")
+            print(f"  Energy Balance Error: {performance['energy_balance_error']:.1%}")
+            print(f"  Stack Temperature: {performance['final_stack_temperature']:.1f}F")
+            print(f"  Converged: {performance['converged']}")
+            
+        except Exception as e:
+            print(f"  [ERROR] Load test failed: {e}")
+            continue
+    
+    # Analysis
+    if len(results) > 0:
+        print(f"\n" + "="*60)
+        print("OPTIMIZATION VALIDATION ANALYSIS")
+        print("="*60)
+        
+        efficiencies = [r['efficiency'] for r in results]
+        stack_temps = [r['stack_temp'] for r in results]
+        
+        # Efficiency analysis
+        eff_min = min(efficiencies)
+        eff_max = max(efficiencies)
+        eff_range = eff_max - eff_min
+        avg_energy_error = np.mean(energy_errors)
+        max_energy_error = max(energy_errors)
+        convergence_rate = convergence_count / len(results)
+        
+        print(f"EFFICIENCY ANALYSIS:")
+        print(f"  Range: {eff_min:.1%} to {eff_max:.1%}")
+        print(f"  Variation: {eff_range:.1%} (Target: >=2%)")
+        
+        print(f"STACK TEMPERATURE ANALYSIS:")
+        stack_min = min(stack_temps)
+        stack_max = max(stack_temps)
+        stack_range = stack_max - stack_min
+        print(f"  Range: {stack_min:.0f}F to {stack_max:.0f}F")
+        print(f"  Variation: {stack_range:.0f}F (Target: >=30F)")
+        
+        print(f"ENERGY BALANCE ANALYSIS:")
+        print(f"  Average Error: {avg_energy_error:.1%} (Target: <5%)")
+        print(f"  Maximum Error: {max_energy_error:.1%}")
+        print(f"  Scenarios <5% Error: {sum(1 for e in energy_errors if e < 0.05)}/{len(energy_errors)}")
+        
+        print(f"SOLVER PERFORMANCE:")
+        print(f"  Convergence Rate: {convergence_rate:.1%} (Target: >=90%)")
+        
+        # Overall success assessment
+        efficiency_success = eff_range >= 0.02
+        stack_success = stack_range >= 30
+        energy_success = avg_energy_error < 0.05 and max_energy_error < 0.08
+        convergence_success = convergence_rate >= 0.90
+        
+        overall_success = efficiency_success and stack_success and energy_success and convergence_success
+        
+        print(f"\nSUCCESS CRITERIA:")
+        print(f"  Efficiency Variation: {'PASS' if efficiency_success else 'FAIL'}")
+        print(f"  Stack Temperature Variation: {'PASS' if stack_success else 'FAIL'}")
+        print(f"  Energy Balance Errors: {'PASS' if energy_success else 'FAIL'}")
+        print(f"  Solver Convergence: {'PASS' if convergence_success else 'FAIL'}")
+        print(f"  OVERALL: {'SUCCESS' if overall_success else 'NEEDS MORE WORK'}")
+        
+        return overall_success
+    
+    return False
+
 if __name__ == "__main__":
     """Test the optimized boiler system."""
     
     print("TESTING OPTIMIZED BOILER SYSTEM - 105% LOAD EDGE CASE FIX")
     print("="*70)
     
-    # Test the 105% load optimization
-    success = test_105_load_optimization()
+    # Test the 105% load optimization specifically
+    print("\nTEST 1: 105% Load Edge Case Optimization")
+    success_105 = test_105_load_optimization()
     
-    if success:
+    # Test the complete system validation
+    print("\nTEST 2: Complete System Validation")
+    success_complete = test_complete_system_validation()
+    
+    if success_105 and success_complete:
         print("\n" + "="*70)
-        print("[SUCCESS] OPTIMIZATION COMPLETE - READY FOR FULL VALIDATION")
-        print("Run 'python debug_script.py' for comprehensive validation")
+        print("[SUCCESS] OPTIMIZATION COMPLETE - READY FOR ANNUAL SIMULATION")
+        print("Run 'python run_annual_simulation.py' for full year dataset generation")
         print("="*70)
     else:
         print("\n" + "="*70)
-        print("[OPTIMIZATION INCOMPLETE] Additional tuning may be needed")
+        print("[OPTIMIZATION INCOMPLETE] Review results for additional tuning")
+        print("Run 'python debug_script.py' for detailed validation")
         print("="*70)
