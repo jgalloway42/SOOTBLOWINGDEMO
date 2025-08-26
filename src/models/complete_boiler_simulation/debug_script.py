@@ -299,193 +299,6 @@ def test_phase3_component_integration():
             avg_energy_error = np.mean([r['energy_balance_error'] for r in integration_results])
             convergence_rate = sum(r['converged'] for r in integration_results) / len(integration_results)
             
-            print(f"\n  PHASE 3 SYSTEM INTEGRATION SUCCESS CRITERIA:")
-            system_success = success_rate >= 0.8
-            energy_success = avg_energy_error < 0.05
-            convergence_success = convergence_rate >= 0.8
-            
-            print_result(system_success, f"System integration success: {success_rate:.1%}")
-            print_result(energy_success, f"Energy balance integration: {avg_energy_error:.1%} avg error")
-            print_result(convergence_success, f"System convergence: {convergence_rate:.1%}")
-            
-            integration_success = system_success and energy_success and convergence_success
-            return integration_success
-        else:
-            print_result(False, "Insufficient integration scenarios completed")
-            return False
-            
-    except Exception as e:
-        print_result(False, f"System integration test failed: {e}")
-        traceback.print_exc()
-        return False
-
-def generate_phase3_realistic_validation_report():
-    """Generate comprehensive Phase 3 validation report with realistic load range."""
-    
-    print_header("PHASE 3 REALISTIC LOAD RANGE VALIDATION REPORT")
-    
-    print("Running comprehensive Phase 3 validation tests with REALISTIC load ranges...")
-    print("REMOVED: Unrealistic 45%, 120%, 150% load scenarios")
-    print("ADDED: Industry-standard 60-105% operating range")
-    
-    # Run all validation tests
-    test_results = {}
-    
-    try:
-        # Test 1: Realistic load variation
-        print("\n" + "="*80)
-        load_success, load_data = test_phase3_realistic_load_variation()
-        test_results['load_variation'] = {
-            'success': load_success,
-            'data': load_data,
-            'priority': 'CRITICAL'
-        }
-        
-        # Test 2: Component integration
-        print("\n" + "="*80)
-        component_success = test_phase3_component_integration()
-        test_results['component_integration'] = {
-            'success': component_success,
-            'priority': 'HIGH'
-        }
-        
-        # Test 3: Combustion efficiency enhancement
-        print("\n" + "="*80)
-        combustion_success = test_phase3_combustion_enhancement()
-        test_results['combustion_enhancement'] = {
-            'success': combustion_success,
-            'priority': 'MEDIUM'
-        }
-        
-        # Test 4: System integration
-        print("\n" + "="*80)
-        integration_success = test_phase3_system_integration()
-        test_results['system_integration'] = {
-            'success': integration_success,
-            'priority': 'HIGH'
-        }
-        
-    except Exception as e:
-        logger.error(f"Validation test execution failed: {e}")
-        logger.error(traceback.format_exc())
-    
-    # Generate summary report
-    print_header("PHASE 3 VALIDATION SUMMARY")
-    
-    total_tests = len(test_results)
-    passed_tests = sum(1 for result in test_results.values() if result['success'])
-    
-    print(f"REALISTIC LOAD RANGE VALIDATION RESULTS:")
-    print(f"  Load Range: 60% to 105% (INDUSTRY STANDARD)")
-    print(f"  Tests Passed: {passed_tests}/{total_tests}")
-    print(f"  Success Rate: {passed_tests/total_tests*100:.1f}%")
-    
-    # Detailed results
-    print(f"\nDETAILED TEST RESULTS:")
-    for test_name, result in test_results.items():
-        status = "PASS" if result['success'] else "FAIL"
-        priority = result['priority']
-        print(f"  [{priority}] {test_name}: {status}")
-    
-    # Overall success determination
-    critical_tests = [result['success'] for result in test_results.values() if result['priority'] == 'CRITICAL']
-    high_tests = [result['success'] for result in test_results.values() if result['priority'] == 'HIGH']
-    
-    overall_success = (
-        all(critical_tests) and  # All critical tests must pass
-        sum(high_tests) >= len(high_tests) * 0.8  # 80% of high priority tests must pass
-    )
-    
-    print(f"\nOVERALL PHASE 3 SUCCESS: {'YES' if overall_success else 'NO'}")
-    
-    if overall_success:
-        print("ACHIEVEMENTS:")
-        print("  - Realistic load range implemented (60-105%)")
-        print("  - Energy balance debugging enhanced")
-        print("  - Industrial boiler operating constraints respected")
-        print("  - System performance validation completed")
-    else:
-        print("REMAINING ISSUES:")
-        failed_tests = [name for name, result in test_results.items() if not result['success']]
-        for test_name in failed_tests:
-            print(f"  - {test_name} requires additional work")
-    
-    # Save detailed report
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_filename = f"logs/debug/phase3_realistic_validation_report_{timestamp}.txt"
-    
-    try:
-        with open(report_filename, 'w') as f:
-            f.write("PHASE 3 REALISTIC LOAD RANGE VALIDATION REPORT\n")
-            f.write("=" * 60 + "\n\n")
-            f.write(f"Generated: {datetime.now()}\n")
-            f.write(f"Load Range: 60% to 105% (Industry Standard)\n")
-            f.write(f"Tests Passed: {passed_tests}/{total_tests}\n")
-            f.write(f"Overall Success: {'YES' if overall_success else 'NO'}\n\n")
-            
-            for test_name, result in test_results.items():
-                f.write(f"{test_name}: {'PASS' if result['success'] else 'FAIL'} ({result['priority']})\n")
-            
-            if 'load_variation' in test_results and test_results['load_variation']['data']:
-                f.write("\nLOAD VARIATION DATA:\n")
-                for item in test_results['load_variation']['data']:
-                    f.write(f"  {item['load_factor']:.0%}: Eff={item['efficiency']:.1%}, "
-                           f"EB_Err={item['energy_error']:.1%}, Conv={item['converged']}\n")
-        
-        logger.info(f"Detailed report saved: {report_filename}")
-        
-    except Exception as e:
-        logger.error(f"Failed to save report: {e}")
-        report_filename = None
-    
-    return overall_success, report_filename
-
-def main():
-    """Main validation execution function."""
-    
-    print_header("PHASE 3 REALISTIC LOAD RANGE VALIDATION EXECUTION")
-    
-    print("Starting Phase 3 validation testing with REALISTIC load ranges...")
-    print("This will validate all critical fixes:")
-    print("  [CHECK] Realistic load range: 60-105% (Industry Standard)")
-    print("  [CHECK] Energy balance debugging: Enhanced logging and validation")
-    print("  [CHECK] Component Q values: Negative -> Positive realistic")
-    print("  [CHECK] Combustion variation: 2.7% -> >=5%")
-    print("  [CHECK] Efficiency variation: Maintained at 11.6%")
-    
-    try:
-        # Generate comprehensive validation report
-        overall_success, report_file = generate_phase3_realistic_validation_report()
-        
-        if overall_success:
-            print_header("[SUCCESS] PHASE 3 REALISTIC VALIDATION SUCCESSFUL!")
-            print("All critical fixes have been validated:")
-            print("  [CHECK] Realistic load range implemented")
-            print("  [CHECK] Energy balance debugging enhanced")
-            print("  [CHECK] Component heat transfer improved")  
-            print("  [CHECK] System integration working")
-            print("\nPhase 3 realistic load range objectives ACHIEVED!")
-        else:
-            print_header("[PARTIAL] PHASE 3 VALIDATION PARTIAL SUCCESS")
-            print("Some fixes are working, others require additional work.")
-            print("Check the validation report for details.")
-            print("Key achievement: REALISTIC load range now implemented!")
-        
-        if report_file:
-            print(f"\nDetailed report: {report_file}")
-        
-        return overall_success
-        
-    except Exception as e:
-        print(f"Validation execution failed: {e}")
-        traceback.print_exc()
-        return False
-
-if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)_balance_error'] for r in integration_results])
-            convergence_rate = sum(r['converged'] for r in integration_results) / len(integration_results)
-            
             print(f"\n  PHASE 3 COMPONENT INTEGRATION SUCCESS CRITERIA:")
             component_success = component_success_rate >= 0.8
             energy_success = avg_energy_error < 0.05
@@ -685,4 +498,191 @@ def test_phase3_system_integration():
         # PHASE 3 INTEGRATION ANALYSIS
         if len(integration_results) >= 2:
             success_rate = sum(r['system_success'] for r in integration_results) / len(integration_results)
-            avg_energy_error = np.mean([r['energy
+            avg_energy_error = np.mean([r['energy_balance_error'] for r in integration_results])
+            convergence_rate = sum(r['converged'] for r in integration_results) / len(integration_results)
+            
+            print(f"\n  PHASE 3 SYSTEM INTEGRATION SUCCESS CRITERIA:")
+            system_success = success_rate >= 0.8
+            energy_success = avg_energy_error < 0.05
+            convergence_success = convergence_rate >= 0.8
+            
+            print_result(system_success, f"System integration success: {success_rate:.1%}")
+            print_result(energy_success, f"Energy balance integration: {avg_energy_error:.1%} avg error")
+            print_result(convergence_success, f"System convergence: {convergence_rate:.1%}")
+            
+            integration_success = system_success and energy_success and convergence_success
+            return integration_success
+        else:
+            print_result(False, "Insufficient integration scenarios completed")
+            return False
+            
+    except Exception as e:
+        print_result(False, f"System integration test failed: {e}")
+        traceback.print_exc()
+        return False
+
+def generate_phase3_realistic_validation_report():
+    """Generate comprehensive Phase 3 validation report with realistic load range."""
+    
+    print_header("PHASE 3 REALISTIC LOAD RANGE VALIDATION REPORT")
+    
+    print("Running comprehensive Phase 3 validation tests with REALISTIC load ranges...")
+    print("REMOVED: Unrealistic 45%, 120%, 150% load scenarios")
+    print("ADDED: Industry-standard 60-105% operating range")
+    
+    # Run all validation tests
+    test_results = {}
+    
+    try:
+        # Test 1: Realistic load variation
+        print("\n" + "="*80)
+        load_success, load_data = test_phase3_realistic_load_variation()
+        test_results['load_variation'] = {
+            'success': load_success,
+            'data': load_data,
+            'priority': 'CRITICAL'
+        }
+        
+        # Test 2: Component integration
+        print("\n" + "="*80)
+        component_success = test_phase3_component_integration()
+        test_results['component_integration'] = {
+            'success': component_success,
+            'priority': 'HIGH'
+        }
+        
+        # Test 3: Combustion efficiency enhancement
+        print("\n" + "="*80)
+        combustion_success = test_phase3_combustion_enhancement()
+        test_results['combustion_enhancement'] = {
+            'success': combustion_success,
+            'priority': 'MEDIUM'
+        }
+        
+        # Test 4: System integration
+        print("\n" + "="*80)
+        integration_success = test_phase3_system_integration()
+        test_results['system_integration'] = {
+            'success': integration_success,
+            'priority': 'HIGH'
+        }
+        
+    except Exception as e:
+        logger.error(f"Validation test execution failed: {e}")
+        logger.error(traceback.format_exc())
+    
+    # Generate summary report
+    print_header("PHASE 3 VALIDATION SUMMARY")
+    
+    total_tests = len(test_results)
+    passed_tests = sum(1 for result in test_results.values() if result['success'])
+    
+    print(f"REALISTIC LOAD RANGE VALIDATION RESULTS:")
+    print(f"  Load Range: 60% to 105% (INDUSTRY STANDARD)")
+    print(f"  Tests Passed: {passed_tests}/{total_tests}")
+    print(f"  Success Rate: {passed_tests/total_tests*100:.1f}%")
+    
+    # Detailed results
+    print(f"\nDETAILED TEST RESULTS:")
+    for test_name, result in test_results.items():
+        status = "PASS" if result['success'] else "FAIL"
+        priority = result['priority']
+        print(f"  [{priority}] {test_name}: {status}")
+    
+    # Overall success determination
+    critical_tests = [result['success'] for result in test_results.values() if result['priority'] == 'CRITICAL']
+    high_tests = [result['success'] for result in test_results.values() if result['priority'] == 'HIGH']
+    
+    overall_success = (
+        all(critical_tests) and  # All critical tests must pass
+        sum(high_tests) >= len(high_tests) * 0.8  # 80% of high priority tests must pass
+    )
+    
+    print(f"\nOVERALL PHASE 3 SUCCESS: {'YES' if overall_success else 'NO'}")
+    
+    if overall_success:
+        print("ACHIEVEMENTS:")
+        print("  - Realistic load range implemented (60-105%)")
+        print("  - Energy balance debugging enhanced")
+        print("  - Industrial boiler operating constraints respected")
+        print("  - System performance validation completed")
+    else:
+        print("REMAINING ISSUES:")
+        failed_tests = [name for name, result in test_results.items() if not result['success']]
+        for test_name in failed_tests:
+            print(f"  - {test_name} requires additional work")
+    
+    # Save detailed report
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    report_filename = f"logs/debug/phase3_realistic_validation_report_{timestamp}.txt"
+    
+    try:
+        with open(report_filename, 'w') as f:
+            f.write("PHASE 3 REALISTIC LOAD RANGE VALIDATION REPORT\n")
+            f.write("=" * 60 + "\n\n")
+            f.write(f"Generated: {datetime.now()}\n")
+            f.write(f"Load Range: 60% to 105% (Industry Standard)\n")
+            f.write(f"Tests Passed: {passed_tests}/{total_tests}\n")
+            f.write(f"Overall Success: {'YES' if overall_success else 'NO'}\n\n")
+            
+            for test_name, result in test_results.items():
+                f.write(f"{test_name}: {'PASS' if result['success'] else 'FAIL'} ({result['priority']})\n")
+            
+            if 'load_variation' in test_results and test_results['load_variation']['data']:
+                f.write("\nLOAD VARIATION DATA:\n")
+                for item in test_results['load_variation']['data']:
+                    f.write(f"  {item['load_factor']:.0%}: Eff={item['efficiency']:.1%}, "
+                           f"EB_Err={item['energy_error']:.1%}, Conv={item['converged']}\n")
+        
+        logger.info(f"Detailed report saved: {report_filename}")
+        
+    except Exception as e:
+        logger.error(f"Failed to save report: {e}")
+        report_filename = None
+    
+    return overall_success, report_filename
+
+def main():
+    """Main validation execution function."""
+    
+    print_header("PHASE 3 REALISTIC LOAD RANGE VALIDATION EXECUTION")
+    
+    print("Starting Phase 3 validation testing with REALISTIC load ranges...")
+    print("This will validate all critical fixes:")
+    print("  [CHECK] Realistic load range: 60-105% (Industry Standard)")
+    print("  [CHECK] Energy balance debugging: Enhanced logging and validation")
+    print("  [CHECK] Component Q values: Negative -> Positive realistic")
+    print("  [CHECK] Combustion variation: 2.7% -> >=5%")
+    print("  [CHECK] Efficiency variation: Maintained at 11.6%")
+    
+    try:
+        # Generate comprehensive validation report
+        overall_success, report_file = generate_phase3_realistic_validation_report()
+        
+        if overall_success:
+            print_header("[SUCCESS] PHASE 3 REALISTIC VALIDATION SUCCESSFUL!")
+            print("All critical fixes have been validated:")
+            print("  [CHECK] Realistic load range implemented")
+            print("  [CHECK] Energy balance debugging enhanced")
+            print("  [CHECK] Component heat transfer improved")  
+            print("  [CHECK] System integration working")
+            print("\nPhase 3 realistic load range objectives ACHIEVED!")
+        else:
+            print_header("[PARTIAL] PHASE 3 VALIDATION PARTIAL SUCCESS")
+            print("Some fixes are working, others require additional work.")
+            print("Check the validation report for details.")
+            print("Key achievement: REALISTIC load range now implemented!")
+        
+        if report_file:
+            print(f"\nDetailed report: {report_file}")
+        
+        return overall_success
+        
+    except Exception as e:
+        print(f"Validation execution failed: {e}")
+        traceback.print_exc()
+        return False
+
+if __name__ == "__main__":
+    success = main()
+    sys.exit(0 if success else 1)
