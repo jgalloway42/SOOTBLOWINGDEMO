@@ -177,7 +177,7 @@ class CorrectedSootProductionModel:
                                                  boiler_system) -> Dict[str, Dict[str, List[float]]]:
         """Calculate realistic fouling rates with corrected deposition patterns."""
         # Calculate base soot production (unchanged)
-        from coal_combustion_models import SootProductionModel
+        from core.coal_combustion_models import SootProductionModel
         soot_model = SootProductionModel()
         soot_data = soot_model.calculate_soot_production(combustion_model, coal_properties)
         

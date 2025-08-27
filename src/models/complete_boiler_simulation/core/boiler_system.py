@@ -22,9 +22,9 @@ from dataclasses import dataclass
 from iapws import IAPWS97
 
 # Import enhanced modules
-from fouling_and_soot_blowing import BoilerSection
-from heat_transfer_calculations import HeatTransferCalculator
-from thermodynamic_properties import PropertyCalculator
+from core.fouling_and_soot_blowing import BoilerSection
+from core.heat_transfer_calculations import HeatTransferCalculator
+from core.thermodynamic_properties import PropertyCalculator
 
 # Configure enhanced logging
 logger = logging.getLogger(__name__)

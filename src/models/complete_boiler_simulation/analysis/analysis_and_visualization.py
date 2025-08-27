@@ -24,7 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict
 
-from boiler_system import EnhancedCompleteBoilerSystem
+from core.boiler_system import EnhancedCompleteBoilerSystem
 
 
 class SystemAnalyzer:

@@ -23,13 +23,13 @@ Version: 5.0 - Complete Integration Demo
 import datetime
 import numpy as np
 
-from coal_combustion_models import CoalCombustionModel, SootProductionModel, CombustionFoulingIntegrator
-from thermodynamic_properties import PropertyCalculator
-from fouling_and_soot_blowing import SootBlowingSimulator
-from heat_transfer_calculations import EnhancedBoilerTubeSection
-from boiler_system import EnhancedCompleteBoilerSystem
-from ml_dataset_generator import MLDatasetGenerator
-from analysis_and_visualization import SystemAnalyzer, Visualizer
+from core.coal_combustion_models import CoalCombustionModel, SootProductionModel, CombustionFoulingIntegrator
+from core.thermodynamic_properties import PropertyCalculator
+from core.fouling_and_soot_blowing import SootBlowingSimulator
+from core.heat_transfer_calculations import EnhancedBoilerTubeSection
+from core.boiler_system import EnhancedCompleteBoilerSystem
+from simulation.ml_dataset_generator import MLDatasetGenerator
+from analysis.analysis_and_visualization import SystemAnalyzer, Visualizer
 
 
 def demonstrate_combustion_fouling_integration():

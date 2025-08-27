@@ -58,8 +58,8 @@ logger.addHandler(console_handler)
 
 # Import enhanced simulation modules
 try:
-    from annual_boiler_simulator import AnnualBoilerSimulator
-    from data_analysis_tools import BoilerDataAnalyzer
+    from simulation.annual_boiler_simulator import AnnualBoilerSimulator
+    from analysis.data_analysis_tools import BoilerDataAnalyzer
     logger.info("Enhanced simulation modules imported successfully")
 except ImportError as e:
     logger.error(f"Import Error: {e}")

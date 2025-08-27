@@ -24,8 +24,8 @@ import math
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Union
 
-from thermodynamic_properties import PropertyCalculator, SteamProperties, GasProperties
-from fouling_and_soot_blowing import FoulingCalculator, SootBlowingSimulator
+from core.thermodynamic_properties import PropertyCalculator, SteamProperties, GasProperties
+from core.fouling_and_soot_blowing import FoulingCalculator, SootBlowingSimulator
 
 # Module constants
 DEFAULT_TUBE_THERMAL_CONDUCTIVITY = 26.0  # Btu/hr-ft-°F (carbon steel)

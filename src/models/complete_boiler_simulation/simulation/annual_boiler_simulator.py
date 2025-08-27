@@ -28,9 +28,9 @@ import random
 import traceback
 
 # Import enhanced modules with IAPWS
-from boiler_system import EnhancedCompleteBoilerSystem
-from coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
-from thermodynamic_properties import PropertyCalculator
+from core.boiler_system import EnhancedCompleteBoilerSystem
+from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
+from core.thermodynamic_properties import PropertyCalculator
 
 # Set up enhanced logging
 log_dir = Path("logs/simulation")
@@ -947,7 +947,7 @@ def test_fixed_interface():
     try:
         # Test 1: Single solver call
         print("\n[OK] Test 1: Single enhanced solver call...")
-        from boiler_system import EnhancedCompleteBoilerSystem
+        from core.boiler_system import EnhancedCompleteBoilerSystem
         
         boiler = EnhancedCompleteBoilerSystem(fuel_input=100e6)
         results = boiler.solve_enhanced_system(max_iterations=10, tolerance=10.0)

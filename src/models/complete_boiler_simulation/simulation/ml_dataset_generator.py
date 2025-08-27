@@ -23,8 +23,8 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Optional
 
-from coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
-from boiler_system import EnhancedCompleteBoilerSystem
+from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
+from core.boiler_system import EnhancedCompleteBoilerSystem
 
 
 class MLDatasetGenerator:

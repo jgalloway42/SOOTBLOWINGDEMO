@@ -64,7 +64,7 @@ def test_phase3_realistic_load_variation():
     print_test_step("3A", "PHASE 3: Realistic Load Variation (60-105%) with Energy Balance Debug")
     
     try:
-        from boiler_system import EnhancedCompleteBoilerSystem
+        from core.boiler_system import EnhancedCompleteBoilerSystem
         
         print("  Testing PHASE 3 FIXED system across REALISTIC load range...")
         print("  REMOVED: Unrealistic 45%, 120%, 150% load scenarios")
@@ -203,8 +203,8 @@ def test_phase3_component_integration():
     print_test_step("3B", "PHASE 3: Component Integration Testing (Realistic Loads)")
     
     try:
-        from boiler_system import EnhancedCompleteBoilerSystem
-        from heat_transfer_calculations import EnhancedBoilerTubeSection
+        from core.boiler_system import EnhancedCompleteBoilerSystem
+        from core.heat_transfer_calculations import EnhancedBoilerTubeSection
         
         print("  Testing component heat transfer with REALISTIC load scenarios...")
         
@@ -324,7 +324,7 @@ def test_phase3_combustion_enhancement():
     print_test_step("3C", "PHASE 3: Combustion Efficiency Enhancement (Realistic Loads)")
     
     try:
-        from coal_combustion_models import CoalCombustionModel
+        from core.coal_combustion_models import CoalCombustionModel
         
         print("  Testing enhanced combustion efficiency across REALISTIC load range...")
         
@@ -426,9 +426,9 @@ def test_phase3_system_integration():
     print_test_step("3D", "PHASE 3: Complete System Integration Testing (Realistic Loads)")
     
     try:
-        from boiler_system import EnhancedCompleteBoilerSystem
-        from heat_transfer_calculations import EnhancedBoilerTubeSection
-        from coal_combustion_models import CoalCombustionModel
+        from core.boiler_system import EnhancedCompleteBoilerSystem
+        from core.heat_transfer_calculations import EnhancedBoilerTubeSection
+        from core.coal_combustion_models import CoalCombustionModel
         
         print("  Testing PHASE 3 complete system integration with REALISTIC loads...")
         
