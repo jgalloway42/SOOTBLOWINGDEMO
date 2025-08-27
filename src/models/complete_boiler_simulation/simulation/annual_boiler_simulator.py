@@ -28,14 +28,17 @@ from pathlib import Path
 import random
 import traceback
 import sys
+import os
 
 # Import enhanced modules with IAPWS
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from core.boiler_system import EnhancedCompleteBoilerSystem
 from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
 from core.thermodynamic_properties import PropertyCalculator
 
-# Set up enhanced logging
-log_dir = Path("logs/simulation")
+# Set up enhanced logging - use project root
+project_root = Path(__file__).parent.parent.parent.parent.parent
+log_dir = project_root / "logs" / "simulation"
 log_dir.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
@@ -58,11 +61,11 @@ console_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 logger.addHandler(console_handler)
 
-# Create data directories
-data_dir = Path("data/generated/annual_datasets")
+# Create data directories - use project root
+data_dir = project_root / "data" / "generated" / "annual_datasets"
 data_dir.mkdir(parents=True, exist_ok=True)
 
-metadata_dir = Path("outputs/metadata")
+metadata_dir = project_root / "outputs" / "metadata"
 metadata_dir.mkdir(parents=True, exist_ok=True)
 
 

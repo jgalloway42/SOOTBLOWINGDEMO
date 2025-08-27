@@ -27,13 +27,17 @@ Version: 8.1 - ASCII Compatibility Fix
 import sys
 import os
 import traceback
+
+# Add parent directory to path for module imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 import pandas as pd
 import logging
 from datetime import datetime
 from pathlib import Path
 
-# Set up logging for the runner script
-log_dir = Path("logs/debug")
+# Set up logging for the runner script - use project root
+project_root = Path(__file__).parent.parent.parent.parent.parent
+log_dir = project_root / "logs" / "debug"
 log_dir.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
