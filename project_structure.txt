@@ -33,8 +33,11 @@ SootblowingDemoJune2025/
     |-- api/
     |-- development_history/
     |-- project_planing/
-    |-- user_guide/
-        |-- most_recent_claude_chat.md
+    |-- quick_start_guide.md
+        |-- core_system_api.md
+        |-- integration_guide.md
+        |-- known_issues_fixes.md
+        |-- simulation_api.md
         |-- Phase3_completion_status_final.md
         |-- Sootblowing Project Status and Plan for Completion.docx
         |-- optimal_solo_timeline.md
@@ -73,7 +76,6 @@ SootblowingDemoJune2025/
             |-- analysis/
             |-- core/
             |-- simulation/
-            |-- tests/
                 |-- analysis_and_visualization.py
                 |-- data_analysis_tools.py
                 |-- main_demonstration.py
