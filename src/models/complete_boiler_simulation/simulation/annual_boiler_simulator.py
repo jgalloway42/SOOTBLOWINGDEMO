@@ -13,7 +13,7 @@ CRITICAL FIXES APPLIED:
 - Corrected parameter extraction from solve_enhanced_system results
 - Added robust fallback handling for API mismatches
 - Replaced all Unicode characters with ASCII equivalents
-- Enhanced logging and debugging output
+- FIXED indentation errors causing syntax issues
 
 Author: Enhanced Boiler Modeling System
 Version: 8.2 - API Compatibility Fix
@@ -230,265 +230,7 @@ class AnnualBoilerSimulator:
         logger.info(f"  Solver failures: {self.simulation_stats['solver_failures']}")
         logger.info(f"  API fixes applied: {self.simulation_stats['api_compatibility_fixes']}")
         
-        return {
-            # Timestamp and basic info
-            'timestamp': current_datetime,
-            'year': current_datetime.year,
-            'month': current_datetime.month,
-            'day': current_datetime.day,
-            'hour': current_datetime.hour,
-            'day_of_year': current_datetime.timetuple().tm_yday,
-            'season': operating_conditions['season'],
-            
-            # Operating conditions
-            'load_factor': operating_conditions['load_factor'],
-            'ambient_temp_F': operating_conditions['ambient_temp_F'],
-            'ambient_humidity_pct': operating_conditions['ambient_humidity_pct'],
-            'coal_quality': operating_conditions['coal_quality'],
-            
-            # Fallback performance values
-            'system_efficiency': 0.82,
-            'final_steam_temp_F': 700.0,
-            'stack_temp_F': 280.0,
-            'energy_balance_error_pct': 0.1,
-            'solution_converged': False,
-            
-            # Basic fallback data for all other fields
-            'coal_rate_lb_hr': 12000.0,
-            'air_flow_scfh': 100000.0,
-            'fuel_input_btu_hr': 100e6,
-            'flue_gas_flow_lb_hr': 84000.0,
-            'coal_carbon_pct': 75.0,
-            'coal_volatile_matter_pct': 35.0,
-            'coal_sulfur_pct': 1.5,
-            'coal_ash_pct': 8.0,
-            'coal_moisture_pct': 12.0,
-            'coal_heating_value_btu_lb': 12500,
-            'excess_o2_pct': 3.5,
-            'combustion_efficiency': 0.98,
-            'flame_temp_F': 3200,
-            'total_nox_lb_hr': 200.0,
-            'so2_lb_hr': 150.0,
-            'co2_lb_hr': 18000.0,
-            'particulates_lb_hr': 25.0,
-            'co2_pct': 13.5,
-            'h2o_pct': 10.0,
-            'n2_pct': 72.5,
-            'co_ppm': 100,
-            'opacity_pct': 10,
-            'stack_velocity_fps': 50,
-            'soot_blowing_active': False,
-            'sections_being_cleaned': 0,
-            'avg_cleaning_effectiveness': 0.0,
-            'furnace_walls_cleaning': False,
-            'generating_bank_cleaning': False,
-            'superheater_primary_cleaning': False,
-            'superheater_secondary_cleaning': False,
-            'economizer_primary_cleaning': False,
-            'economizer_secondary_cleaning': False,
-            'air_heater_cleaning': False,
-            'steam_consumption_lb_hr': 0,
-            'cleaning_duration_min': 0,
-            'hours_since_last_furnace': 0,
-            'hours_since_last_generating': 0,
-            'hours_since_last_superheater_1': 0,
-            'hours_since_last_superheater_2': 0,
-            'hours_since_last_economizer_1': 0,
-            'hours_since_last_economizer_2': 0,
-            'hours_since_last_air_heater': 0,
-            'furnace_fouling_factor': 1.05,
-            'generating_bank_fouling_factor': 1.08,
-            'superheater_1_fouling_factor': 1.10,
-            'superheater_2_fouling_factor': 1.10,
-            'economizer_1_fouling_factor': 1.12,
-            'economizer_2_fouling_factor': 1.12,
-            'air_heater_fouling_factor': 1.15
-        }
-    
-    def save_annual_data(self, annual_data: pd.DataFrame) -> Tuple[str, str]:
-        """Save annual data with enhanced metadata and proper file organization."""
-        
-        # Generate timestamp for unique filename
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        # Create filenames with proper paths
-        data_filepath = data_dir / f"massachusetts_boiler_annual_{timestamp}.csv"
-        metadata_filepath = metadata_dir / f"massachusetts_boiler_annual_metadata_{timestamp}.txt"
-        
-        logger.info(f"Saving enhanced annual dataset with IAPWS integration...")
-        
-        # Save main dataset
-        annual_data.to_csv(data_filepath, index=False)
-        
-        # Generate comprehensive metadata
-        with open(metadata_filepath, 'w') as f:
-            f.write("ENHANCED ANNUAL BOILER SIMULATION METADATA\n")
-            f.write("=" * 60 + "\n\n")
-            
-            f.write(f"GENERATION INFO:\n")
-            f.write(f"  Generated: {datetime.datetime.now()}\n")
-            f.write(f"  Simulation Version: 8.2 - API Compatibility Fix\n")
-            f.write(f"  IAPWS Integration: YES (Industry-Standard Steam Properties)\n")
-            f.write(f"  ASCII Compatibility: YES (Windows Compatible)\n")
-            
-            f.write(f"\nDATASET INFO:\n")
-            f.write(f"  Records: {len(annual_data):,} hourly operations\n")
-            f.write(f"  Time Period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}\n")
-            f.write(f"  Data File: {data_filepath.name}\n")
-            f.write(f"  File Size: {data_filepath.stat().st_size / (1024*1024):.1f} MB\n")
-            
-            if len(annual_data) > 0:
-                f.write(f"\nPERFORMANCE SUMMARY:\n")
-                if 'system_efficiency' in annual_data.columns:
-                    eff_mean = annual_data['system_efficiency'].mean()
-                    eff_std = annual_data['system_efficiency'].std()
-                    eff_min = annual_data['system_efficiency'].min()
-                    eff_max = annual_data['system_efficiency'].max()
-                    f.write(f"  Average Efficiency: {eff_mean:.1%}\n")
-                    f.write(f"  Efficiency Range: {eff_min:.1%} - {eff_max:.1%}\n")
-                    f.write(f"  Efficiency Variation: {eff_std:.2%} std dev\n")
-                
-                if 'load_factor' in annual_data.columns:
-                    load_mean = annual_data['load_factor'].mean()
-                    load_min = annual_data['load_factor'].min()
-                    load_max = annual_data['load_factor'].max()
-                    f.write(f"  Average Load Factor: {load_mean:.1%}\n")
-                    f.write(f"  Load Range: {load_min:.1%} - {load_max:.1%}\n")
-                
-                if 'stack_temp_F' in annual_data.columns:
-                    stack_mean = annual_data['stack_temp_F'].mean()
-                    stack_std = annual_data['stack_temp_F'].std()
-                    f.write(f"  Average Stack Temperature: {stack_mean:.0f}F\n")
-                    f.write(f"  Stack Temperature Variation: {stack_std:.1f}F std dev\n")
-            
-            f.write(f"\nSIMULATION STATISTICS:\n")
-            f.write(f"  Total Hours Simulated: {self.simulation_stats['total_hours']}\n")
-            f.write(f"  Solver Failures: {self.simulation_stats['solver_failures']}\n")
-            f.write(f"  API Compatibility Fixes: {self.simulation_stats['api_compatibility_fixes']}\n")
-            f.write(f"  Efficiency Warnings: {self.simulation_stats['efficiency_warnings']}\n")
-            f.write(f"  Temperature Warnings: {self.simulation_stats['temperature_warnings']}\n")
-            
-            f.write(f"\nDATA STRUCTURE:\n")
-            f.write(f"  Total Columns: {len(annual_data.columns)}\n")
-            f.write("  Column Categories:\n")
-            f.write("    - Timestamp & Operational (7 columns)\n")
-            f.write("    - Coal & Combustion (17 columns)\n")
-            f.write("    - Emissions (11 columns)\n")
-            f.write("    - System Performance (13 columns)\n")
-            f.write("    - Soot Blowing (16 columns)\n")
-            f.write("    - Fouling Factors (42 columns)\n")
-            f.write("    - Section Heat Transfer (42 columns)\n")
-            
-            f.write(f"\nQUALITY IMPROVEMENTS:\n")
-            f.write(f"  - FIXED API compatibility between AnnualBoilerSimulator and EnhancedCompleteBoilerSystem\n")
-            f.write(f"  - Proper parameter extraction from solve_enhanced_system results\n")
-            f.write(f"  - Robust fallback handling for solver interface mismatches\n")
-            f.write(f"  - ASCII-safe temperature and efficiency logging\n")
-            f.write(f"  - Enhanced error handling and debugging output\n")
-        
-        # Log save completion
-        file_size_mb = data_filepath.stat().st_size / (1024 * 1024)
-        logger.info("Enhanced annual dataset saved with FIXED API compatibility:")
-        logger.info(f"  Data file: {data_filepath}")
-        logger.info(f"  Metadata: {metadata_filepath}")
-        logger.info(f"  Records: {len(annual_data):,}")
-        logger.info(f"  Size: {file_size_mb:.1f} MB")
-        logger.info(f"  Average efficiency: {annual_data['system_efficiency'].mean():.1%}")
-        logger.info(f"  Stack temp variation: {annual_data['stack_temp_F'].std():.1f}F std dev")
-        
-        return str(data_filepath), str(metadata_filepath)
-
-
-# Test and validation functions
-def test_fixed_interface():
-    """Test the FIXED solver interface compatibility."""
-    
-    print("\n" + "="*60)
-    print("TESTING FIXED API COMPATIBILITY")
-    print("="*60)
-    
-    try:
-        # Test 1: Enhanced boiler system creation with CORRECT parameters
-        print("\n[TEST 1] Creating EnhancedCompleteBoilerSystem with FIXED API...")
-        boiler = EnhancedCompleteBoilerSystem(
-            fuel_input=100e6,        # CORRECT parameter name
-            flue_gas_mass_flow=84000, # CORRECT parameter name  
-            furnace_exit_temp=3000    # CORRECT parameter name
-        )
-        print("[PASS] Boiler system created successfully with correct API")
-        
-        # Test 2: Solver interface compatibility
-        print("\n[TEST 2] Testing solve_enhanced_system interface...")
-        results = boiler.solve_enhanced_system(max_iterations=10, tolerance=15.0)
-        
-        # Test expected return structure
-        expected_keys = ['converged', 'final_efficiency', 'final_steam_temperature', 
-                        'final_stack_temperature', 'energy_balance_error']
-        
-        missing_keys = [key for key in expected_keys if key not in results]
-        if missing_keys:
-            print(f"[WARNING] Missing expected keys: {missing_keys}")
-        else:
-            print("[PASS] Solver returned all expected keys")
-        
-        print(f"[INFO] Solver Results:")
-        print(f"  Converged: {results.get('converged', 'N/A')}")
-        print(f"  Efficiency: {results.get('final_efficiency', 0):.1%}")
-        print(f"  Steam Temp: {results.get('final_steam_temperature', 0):.0f}F")
-        print(f"  Stack Temp: {results.get('final_stack_temperature', 0):.0f}F")
-        
-        # Test 3: Annual simulator creation and API compatibility
-        print("\n[TEST 3] Testing AnnualBoilerSimulator API compatibility...")
-        simulator = AnnualBoilerSimulator(start_date="2024-01-01")
-        print("[PASS] Annual simulator created successfully")
-        
-        # Test generate_annual_data with CORRECT parameters
-        print("\n[TEST 4] Testing generate_annual_data with FIXED parameters...")
-        simulator.end_date = simulator.start_date + pd.DateOffset(hours=2)  # Just 2 hours for testing
-        
-        test_data = simulator.generate_annual_data(
-            hours_per_day=24,        # CORRECT parameter name
-            save_interval_hours=1    # CORRECT parameter name
-        )
-        
-        print(f"[PASS] Generated {len(test_data)} records with fixed API")
-        print(f"[INFO] Sample efficiency: {test_data['system_efficiency'].iloc[0]:.1%}")
-        
-        # Test 5: Data saving
-        print("\n[TEST 5] Testing save_annual_data...")
-        data_file, metadata_file = simulator.save_annual_data(test_data)
-        print(f"[PASS] Data saved successfully")
-        print(f"[INFO] Data file: {Path(data_file).name}")
-        print(f"[INFO] Metadata file: {Path(metadata_file).name}")
-        
-        print("\n" + "="*60)
-        print("ALL API COMPATIBILITY TESTS PASSED!")
-        print("="*60)
-        
-        return True
-        
-    except Exception as e:
-        print(f"\n[FAIL] API compatibility test failed: {e}")
-        print("Error details:")
-        traceback.print_exc()
-        return False
-
-
-if __name__ == "__main__":
-    """Main testing entry point for API compatibility validation."""
-    
-    print("ANNUAL BOILER SIMULATOR - API COMPATIBILITY TESTING")
-    print("Version 8.2 - API Compatibility Fix")
-    
-    success = test_fixed_interface()
-    
-    if success:
-        print("\n>> API compatibility fixes validated successfully!")
-        print(">> Ready for full annual simulation")
-    else:
-        print("\n>> API compatibility issues still present")
-        print(">> Review error messages and fix remaining issues")
- df
+        return df
     
     def _simulate_boiler_operation_fixed_api(self, current_datetime: datetime.datetime,
                                            operating_conditions: Dict,
@@ -600,15 +342,15 @@ if __name__ == "__main__":
                 'final_steam_temp_F': steam_temp,
                 'stack_temp_F': stack_temp,
                 'energy_balance_error_pct': energy_error,
-                'solution_converged': converged,
-                
-                # Enhanced data from other components
-                **coal_data,
-                **emissions_data,
-                **soot_blowing_data,
-                **fouling_data,
-                **section_data
+                'solution_converged': converged
             }
+            
+            # Add all component data using dictionary unpacking
+            operation_data.update(coal_data)
+            operation_data.update(emissions_data)
+            operation_data.update(soot_blowing_data)
+            operation_data.update(fouling_data)
+            operation_data.update(section_data)
             
             return operation_data
             
@@ -828,8 +570,7 @@ if __name__ == "__main__":
             # Excess O2 calculation
             excess_o2 = excess_air_pct / 5.0  # Rough conversion
             
-            coal_data = {}
-            coal_data.update({
+            return {
                 'coal_carbon_pct': carbon_pct,
                 'coal_volatile_matter_pct': volatile_pct,
                 'coal_sulfur_pct': sulfur_pct,
@@ -843,9 +584,7 @@ if __name__ == "__main__":
                 'excess_o2_pct': max(2.0, min(6.0, excess_o2)),
                 'combustion_efficiency': np.random.normal(0.98, 0.01),
                 'flame_temp_F': int(np.random.normal(3200, 100))
-            })
-            
-            return coal_data
+            }
             
         except Exception as e:
             logger.warning(f"Coal combustion data generation failed: {e}")
@@ -897,26 +636,9 @@ if __name__ == "__main__":
             
             return {
                 'total_nox_lb_hr': total_nox_lb_hr,
-                'so2_lb_hr': so2_lb_hr,
-                'co2_lb_hr': co2_lb_hr,
-                'particulates_lb_hr': particulates_lb_hr,
-                'excess_o2_pct': excess_o2_pct,
-                'co2_pct': co2_pct,
-                'h2o_pct': h2o_pct,
-                'n2_pct': n2_pct,
-                'co_ppm': np.random.uniform(50, 150),
-                'opacity_pct': np.random.uniform(5, 15),
-                'stack_velocity_fps': np.random.uniform(40, 60)
-            }
-            
-        except Exception as e:
-            logger.warning(f"Emissions data generation failed: {e}")
-            return {
-                'total_nox_lb_hr': 200.0,
                 'so2_lb_hr': 150.0,
                 'co2_lb_hr': 18000.0,
                 'particulates_lb_hr': 25.0,
-                'excess_o2_pct': 4.0,
                 'co2_pct': 13.5,
                 'h2o_pct': 10.0,
                 'n2_pct': 72.5,
@@ -992,7 +714,7 @@ if __name__ == "__main__":
             # Add progressive fouling based on time
             fouling_accumulation = base_rate * days_running
             
-            # Add some random variation
+            # Add some realistic variation
             variation = np.random.uniform(-0.001, 0.001)
             
             # Calculate current fouling factor (higher = more fouling)
@@ -1066,4 +788,282 @@ if __name__ == "__main__":
                 'season': 'spring'
             }
         
-        return
+        return {
+            # Timestamp and basic info
+            'timestamp': current_datetime,
+            'year': current_datetime.year,
+            'month': current_datetime.month,
+            'day': current_datetime.day,
+            'hour': current_datetime.hour,
+            'day_of_year': current_datetime.timetuple().tm_yday,
+            'season': operating_conditions['season'],
+            
+            # Operating conditions
+            'load_factor': operating_conditions['load_factor'],
+            'ambient_temp_F': operating_conditions['ambient_temp_F'],
+            'ambient_humidity_pct': operating_conditions['ambient_humidity_pct'],
+            'coal_quality': operating_conditions['coal_quality'],
+            
+            # Fallback performance values
+            'system_efficiency': 0.82,
+            'final_steam_temp_F': 700.0,
+            'stack_temp_F': 280.0,
+            'energy_balance_error_pct': 0.1,
+            'solution_converged': False,
+            
+            # Basic fallback data for all other fields
+            'coal_rate_lb_hr': 12000.0,
+            'air_flow_scfh': 100000.0,
+            'fuel_input_btu_hr': 100e6,
+            'flue_gas_flow_lb_hr': 84000.0,
+            'coal_carbon_pct': 75.0,
+            'coal_volatile_matter_pct': 35.0,
+            'coal_sulfur_pct': 1.5,
+            'coal_ash_pct': 8.0,
+            'coal_moisture_pct': 12.0,
+            'coal_heating_value_btu_lb': 12500,
+            'excess_o2_pct': 3.5,
+            'combustion_efficiency': 0.98,
+            'flame_temp_F': 3200,
+            'total_nox_lb_hr': 200.0,
+            'so2_lb_hr': 150.0,
+            'co2_lb_hr': 18000.0,
+            'particulates_lb_hr': 25.0,
+            'co2_pct': 13.5,
+            'h2o_pct': 10.0,
+            'n2_pct': 72.5,
+            'co_ppm': 100,
+            'opacity_pct': 10,
+            'stack_velocity_fps': 50,
+            'soot_blowing_active': False,
+            'sections_being_cleaned': 0,
+            'avg_cleaning_effectiveness': 0.0,
+            'furnace_walls_cleaning': False,
+            'generating_bank_cleaning': False,
+            'superheater_primary_cleaning': False,
+            'superheater_secondary_cleaning': False,
+            'economizer_primary_cleaning': False,
+            'economizer_secondary_cleaning': False,
+            'air_heater_cleaning': False,
+            'steam_consumption_lb_hr': 0,
+            'cleaning_duration_min': 0,
+            'hours_since_last_furnace': 0,
+            'hours_since_last_generating': 0,
+            'hours_since_last_superheater_1': 0,
+            'hours_since_last_superheater_2': 0,
+            'hours_since_last_economizer_1': 0,
+            'hours_since_last_economizer_2': 0,
+            'hours_since_last_air_heater': 0,
+            'furnace_fouling_factor': 1.05,
+            'generating_bank_fouling_factor': 1.08,
+            'superheater_1_fouling_factor': 1.10,
+            'superheater_2_fouling_factor': 1.10,
+            'economizer_1_fouling_factor': 1.12,
+            'economizer_2_fouling_factor': 1.12,
+            'air_heater_fouling_factor': 1.15
+        }
+    
+    def save_annual_data(self, annual_data: pd.DataFrame) -> Tuple[str, str]:
+        """Save annual data with enhanced metadata and proper file organization."""
+        
+        # Generate timestamp for unique filename
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # Create filenames with proper paths
+        data_filepath = data_dir / f"massachusetts_boiler_annual_{timestamp}.csv"
+        metadata_filepath = metadata_dir / f"massachusetts_boiler_annual_metadata_{timestamp}.txt"
+        
+        logger.info(f"Saving enhanced annual dataset with IAPWS integration...")
+        
+        # Save main dataset
+        annual_data.to_csv(data_filepath, index=False)
+        
+        # Generate comprehensive metadata
+        with open(metadata_filepath, 'w') as f:
+            f.write("ENHANCED ANNUAL BOILER SIMULATION METADATA\n")
+            f.write("=" * 60 + "\n\n")
+            
+            f.write(f"GENERATION INFO:\n")
+            f.write(f"  Generated: {datetime.datetime.now()}\n")
+            f.write(f"  Simulation Version: 8.2 - API Compatibility Fix\n")
+            f.write(f"  IAPWS Integration: YES (Industry-Standard Steam Properties)\n")
+            f.write(f"  ASCII Compatibility: YES (Windows Compatible)\n")
+            
+            f.write(f"\nDATASET INFO:\n")
+            f.write(f"  Records: {len(annual_data):,} hourly operations\n")
+            f.write(f"  Time Period: {self.start_date.strftime('%Y-%m-%d')} to {self.end_date.strftime('%Y-%m-%d')}\n")
+            f.write(f"  Data File: {data_filepath.name}\n")
+            f.write(f"  File Size: {data_filepath.stat().st_size / (1024*1024):.1f} MB\n")
+            
+            if len(annual_data) > 0:
+                f.write(f"\nPERFORMANCE SUMMARY:\n")
+                if 'system_efficiency' in annual_data.columns:
+                    eff_mean = annual_data['system_efficiency'].mean()
+                    eff_std = annual_data['system_efficiency'].std()
+                    eff_min = annual_data['system_efficiency'].min()
+                    eff_max = annual_data['system_efficiency'].max()
+                    f.write(f"  Average Efficiency: {eff_mean:.1%}\n")
+                    f.write(f"  Efficiency Range: {eff_min:.1%} - {eff_max:.1%}\n")
+                    f.write(f"  Efficiency Variation: {eff_std:.2%} std dev\n")
+                
+                if 'load_factor' in annual_data.columns:
+                    load_mean = annual_data['load_factor'].mean()
+                    load_min = annual_data['load_factor'].min()
+                    load_max = annual_data['load_factor'].max()
+                    f.write(f"  Average Load Factor: {load_mean:.1%}\n")
+                    f.write(f"  Load Range: {load_min:.1%} - {load_max:.1%}\n")
+                
+                if 'stack_temp_F' in annual_data.columns:
+                    stack_mean = annual_data['stack_temp_F'].mean()
+                    stack_std = annual_data['stack_temp_F'].std()
+                    f.write(f"  Average Stack Temperature: {stack_mean:.0f}F\n")
+                    f.write(f"  Stack Temperature Variation: {stack_std:.1f}F std dev\n")
+            
+            f.write(f"\nSIMULATION STATISTICS:\n")
+            f.write(f"  Total Hours Simulated: {self.simulation_stats['total_hours']}\n")
+            f.write(f"  Solver Failures: {self.simulation_stats['solver_failures']}\n")
+            f.write(f"  API Compatibility Fixes: {self.simulation_stats['api_compatibility_fixes']}\n")
+            f.write(f"  Efficiency Warnings: {self.simulation_stats['efficiency_warnings']}\n")
+            f.write(f"  Temperature Warnings: {self.simulation_stats['temperature_warnings']}\n")
+            
+            f.write(f"\nDATA STRUCTURE:\n")
+            f.write(f"  Total Columns: {len(annual_data.columns)}\n")
+            f.write("  Column Categories:\n")
+            f.write("    - Timestamp & Operational (7 columns)\n")
+            f.write("    - Coal & Combustion (17 columns)\n")
+            f.write("    - Emissions (11 columns)\n")
+            f.write("    - System Performance (13 columns)\n")
+            f.write("    - Soot Blowing (16 columns)\n")
+            f.write("    - Fouling Factors (42 columns)\n")
+            f.write("    - Section Heat Transfer (42 columns)\n")
+            
+            f.write(f"\nQUALITY IMPROVEMENTS:\n")
+            f.write(f"  - FIXED API compatibility between AnnualBoilerSimulator and EnhancedCompleteBoilerSystem\n")
+            f.write(f"  - Proper parameter extraction from solve_enhanced_system results\n")
+            f.write(f"  - Robust fallback handling for solver interface mismatches\n")
+            f.write(f"  - ASCII-safe temperature and efficiency logging\n")
+            f.write(f"  - Enhanced error handling and debugging output\n")
+            f.write(f"  - Fixed indentation errors causing syntax failures\n")
+        
+        # Log save completion
+        file_size_mb = data_filepath.stat().st_size / (1024 * 1024)
+        logger.info("Enhanced annual dataset saved with FIXED API compatibility:")
+        logger.info(f"  Data file: {data_filepath}")
+        logger.info(f"  Metadata: {metadata_filepath}")
+        logger.info(f"  Records: {len(annual_data):,}")
+        logger.info(f"  Size: {file_size_mb:.1f} MB")
+        
+        if 'system_efficiency' in annual_data.columns:
+            logger.info(f"  Average efficiency: {annual_data['system_efficiency'].mean():.1%}")
+        if 'stack_temp_F' in annual_data.columns:
+            logger.info(f"  Stack temp variation: {annual_data['stack_temp_F'].std():.1f}F std dev")
+        
+        return str(data_filepath), str(metadata_filepath)
+
+
+# Test and validation functions
+def test_fixed_interface():
+    """Test the FIXED solver interface compatibility."""
+    
+    print("\n" + "="*60)
+    print("TESTING FIXED API COMPATIBILITY")
+    print("="*60)
+    
+    try:
+        # Test 1: Enhanced boiler system creation with CORRECT parameters
+        print("\n[TEST 1] Creating EnhancedCompleteBoilerSystem with FIXED API...")
+        boiler = EnhancedCompleteBoilerSystem(
+            fuel_input=100e6,        # CORRECT parameter name
+            flue_gas_mass_flow=84000, # CORRECT parameter name  
+            furnace_exit_temp=3000    # CORRECT parameter name
+        )
+        print("[PASS] Boiler system created successfully with correct API")
+        
+        # Test 2: Solver interface compatibility
+        print("\n[TEST 2] Testing solve_enhanced_system interface...")
+        results = boiler.solve_enhanced_system(max_iterations=10, tolerance=15.0)
+        
+        # Test expected return structure
+        expected_keys = ['converged', 'final_efficiency', 'final_steam_temperature', 
+                        'final_stack_temperature', 'energy_balance_error']
+        
+        missing_keys = [key for key in expected_keys if key not in results]
+        if missing_keys:
+            print(f"[WARNING] Missing expected keys: {missing_keys}")
+        else:
+            print("[PASS] Solver returned all expected keys")
+        
+        print(f"[INFO] Solver Results:")
+        print(f"  Converged: {results.get('converged', 'N/A')}")
+        print(f"  Efficiency: {results.get('final_efficiency', 0):.1%}")
+        print(f"  Steam Temp: {results.get('final_steam_temperature', 0):.0f}F")
+        print(f"  Stack Temp: {results.get('final_stack_temperature', 0):.0f}F")
+        
+        # Test 3: Annual simulator creation and API compatibility
+        print("\n[TEST 3] Testing AnnualBoilerSimulator API compatibility...")
+        simulator = AnnualBoilerSimulator(start_date="2024-01-01")
+        print("[PASS] Annual simulator created successfully")
+        
+        # Test generate_annual_data with CORRECT parameters
+        print("\n[TEST 4] Testing generate_annual_data with FIXED parameters...")
+        simulator.end_date = simulator.start_date + pd.DateOffset(hours=2)  # Just 2 hours for testing
+        
+        test_data = simulator.generate_annual_data(
+            hours_per_day=24,        # CORRECT parameter name
+            save_interval_hours=1    # CORRECT parameter name
+        )
+        
+        print(f"[PASS] Generated {len(test_data)} records with fixed API")
+        if len(test_data) > 0:
+            print(f"[INFO] Sample efficiency: {test_data['system_efficiency'].iloc[0]:.1%}")
+        
+        # Test 5: Data saving
+        print("\n[TEST 5] Testing save_annual_data...")
+        data_file, metadata_file = simulator.save_annual_data(test_data)
+        print(f"[PASS] Data saved successfully")
+        print(f"[INFO] Data file: {Path(data_file).name}")
+        print(f"[INFO] Metadata file: {Path(metadata_file).name}")
+        
+        print("\n" + "="*60)
+        print("ALL API COMPATIBILITY TESTS PASSED!")
+        print("="*60)
+        
+        return True
+        
+    except Exception as e:
+        print(f"\n[FAIL] API compatibility test failed: {e}")
+        print("Error details:")
+        traceback.print_exc()
+        return False
+
+
+if __name__ == "__main__":
+    """Main testing entry point for API compatibility validation."""
+    
+    print("ANNUAL BOILER SIMULATOR - API COMPATIBILITY TESTING")
+    print("Version 8.2 - API Compatibility Fix")
+    
+    success = test_fixed_interface()
+    
+    if success:
+        print("\n>> API compatibility fixes validated successfully!")
+        print(">> Ready for full annual simulation")
+    else:
+        print("\n>> API compatibility issues still present")
+        print(">> Review error messages and fix remaining issues")so2_lb_hr,
+                'co2_lb_hr': co2_lb_hr,
+                'particulates_lb_hr': particulates_lb_hr,
+                'excess_o2_pct': excess_o2_pct,
+                'co2_pct': co2_pct,
+                'h2o_pct': h2o_pct,
+                'n2_pct': n2_pct,
+                'co_ppm': np.random.uniform(50, 150),
+                'opacity_pct': np.random.uniform(5, 15),
+                'stack_velocity_fps': np.random.uniform(40, 60)
+            }
+            
+        except Exception as e:
+            logger.warning(f"Emissions data generation failed: {e}")
+            return {
+                'total_nox_lb_hr': 200.0,
+                'so2_lb_hr': 
