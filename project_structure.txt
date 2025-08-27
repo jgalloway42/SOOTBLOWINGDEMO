@@ -5,24 +5,21 @@ SootblowingDemoJune2025/
 |-- notebooks/
 |-- reports/
 |-- src/
+|-- tests/
 |-- .gitignore
 |-- README.md
 |-- document_file_structure.py
-|-- file_structure.txt
 |-- requirements.txt
     |-- generated/
-    |-- interim/
     |-- processed/
     |-- raw/
-        |-- annual_datasets/
-            |-- massachusetts_boiler_annual_20250819_204713.csv
-        |-- soot_blowing_optimization_dataset_20250812_0956.csv
         |-- massachusetts_boiler_annual_20250812_113312.csv
         |-- massachusetts_boiler_annual_20250813_101638.csv
         |-- massachusetts_boiler_annual_20250813_103438.csv
         |-- massachusetts_boiler_annual_20250813_115553.csv
         |-- massachusetts_boiler_annual_20250815_104036.csv
         |-- massachusetts_boiler_annual_20250815_121034.csv
+        |-- massachusetts_boiler_annual_20250819_204713.csv
         |-- massachusetts_boiler_annual_metadata_20250812_113312.txt
         |-- massachusetts_boiler_annual_metadata_20250813_101638.txt
         |-- massachusetts_boiler_annual_metadata_20250813_103438.txt
@@ -30,11 +27,16 @@ SootblowingDemoJune2025/
         |-- massachusetts_boiler_annual_metadata_20250815_104036.txt
         |-- massachusetts_boiler_annual_metadata_20250815_121034.txt
         |-- massachusetts_boiler_annual_metadata_20250815_165739.txt
-    |-- .gitkeep
-    |-- Phase3_completion_status_final.md
-    |-- Sootblowing Project Status and Plan for Completion.docx
-    |-- optimal_solo_timeline.md
-    |-- project_status_documentation.md
+        |-- soot_blowing_optimization_dataset_20250812_0956.csv
+    |-- api/
+    |-- development_history/
+    |-- project_planing/
+    |-- user_guide/
+        |-- most_recent_claude_chat.md
+        |-- Phase3_completion_status_final.md
+        |-- Sootblowing Project Status and Plan for Completion.docx
+        |-- optimal_solo_timeline.md
+        |-- project_status_documentation.md
     |-- .gitkeep
     |-- .gitkeep
     |-- 1.0-jdg-boiler-model-development.ipynb
@@ -62,42 +64,31 @@ SootblowingDemoJune2025/
         |-- preamble.py
         |-- steam_coal_calculator.py
         |-- ML_models/
-        |-- __pycache__/
         |-- complete_boiler_simulation/
         |-- development_artifacts/
         |-- .gitkeep
             |-- lstm_fouling_prediction.py
-            |-- __pycache__/
-            |-- data/
-            |-- logs/
-            |-- outputs/
-            |-- analysis_and_visualization.py
-            |-- annual_boiler_simulator.py
-            |-- boiler_system.py
-            |-- coal_combustion_models.py
-            |-- data_analysis_tools.py
-            |-- debug_script.py
-            |-- fouling_and_soot_blowing.py
-            |-- heat_transfer_calculations.py
-            |-- main_demonstration.py
-            |-- ml_dataset_generator.py
-            |-- most_recent_claude_chat.md
-            |-- run_annual_simulation.py
-            |-- thermodynamic_properties.py
-                |-- generated/
-                    |-- annual_datasets/
-                |-- debug/
-                |-- simulation/
-                |-- solver/
-                    |-- annual_simulation_output.txt
-                    |-- debug_validation_output.txt
-                    |-- integration_test_output.txt
-                    |-- phase3_realistic_validation_report_20250827_092741.txt
-                |-- metadata/
-            |-- coal_combustion_class.py
-            |-- complete_boiler_system.py
-            |-- development_coal_combustion_model.py
-            |-- enhanced_boiler_complete.py
-            |-- enhanced_boiler_system_with_coal_combustion_integration.py
+            |-- analysis/
+            |-- core/
+            |-- simulation/
+            |-- tests/
+                |-- analysis_and_visualization.py
+                |-- data_analysis_tools.py
+                |-- main_demonstration.py
+                |-- boiler_system.py
+                |-- coal_combustion_models.py
+                |-- fouling_and_soot_blowing.py
+                |-- heat_transfer_calculations.py
+                |-- thermodynamic_properties.py
+                |-- annual_boiler_simulator.py
+                |-- debug_script.py
+                |-- ml_dataset_generator.py
+                |-- run_annual_simulation.py
+            |-- archive/
+                |-- coal_combustion_class.py
+                |-- complete_boiler_system.py
+                |-- development_coal_combustion_model.py
+                |-- enhanced_boiler_complete.py
+                |-- enhanced_boiler_system_with_coal_combustion_integration.py
         |-- .gitkeep
         |-- boiler_diagram.py
