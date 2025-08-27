@@ -94,17 +94,17 @@ def check_dependencies():
         logger.warning("[*] Thermo library not found - will use correlations")
         print("[*] Thermo library not found - will use correlations for gas properties")
     
-    # Check directory structure
+    # Check directory structure - use project root paths
     required_dirs = [
-        "data/generated/annual_datasets",
-        "outputs/metadata", 
-        "logs/simulation",
-        "logs/solver",
-        "logs/debug"
+        project_root / "data" / "generated" / "annual_datasets",
+        project_root / "outputs" / "metadata",
+        project_root / "logs" / "simulation", 
+        project_root / "logs" / "solver",
+        project_root / "logs" / "debug"
     ]
     
     for dir_path in required_dirs:
-        Path(dir_path).mkdir(parents=True, exist_ok=True)
+        dir_path.mkdir(parents=True, exist_ok=True)
         logger.debug(f"Directory created/verified: {dir_path}")
     
     print("[OK] Enhanced directory structure created")

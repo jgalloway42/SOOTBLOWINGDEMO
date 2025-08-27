@@ -28,11 +28,12 @@ from datetime import datetime
 # Set up logging for analysis tools
 logger = logging.getLogger(__name__)
 
-# Create output directories
-output_dir = Path("outputs/analysis")
+# Calculate project root and create output directories
+project_root = Path(__file__).parent.parent.parent.parent.parent
+output_dir = project_root / "outputs" / "analysis"
 output_dir.mkdir(parents=True, exist_ok=True)
 
-figures_dir = Path("outputs/figures")
+figures_dir = project_root / "outputs" / "figures"  
 figures_dir.mkdir(parents=True, exist_ok=True)
 
 
