@@ -27,6 +27,7 @@ from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 import random
 import traceback
+import sys
 
 # Import enhanced modules with IAPWS
 from core.boiler_system import EnhancedCompleteBoilerSystem
@@ -636,9 +637,26 @@ class AnnualBoilerSimulator:
             
             return {
                 'total_nox_lb_hr': total_nox_lb_hr,
+                'so2_lb_hr': so2_lb_hr,
+                'co2_lb_hr': co2_lb_hr,
+                'particulates_lb_hr': particulates_lb_hr,
+                'excess_o2_pct': excess_o2_pct,
+                'co2_pct': co2_pct,
+                'h2o_pct': h2o_pct,
+                'n2_pct': n2_pct,
+                'co_ppm': np.random.uniform(50, 150),
+                'opacity_pct': np.random.uniform(5, 15),
+                'stack_velocity_fps': np.random.uniform(40, 60)
+            }
+            
+        except Exception as e:
+            logger.warning(f"Emissions data generation failed: {e}")
+            return {
+                'total_nox_lb_hr': 200.0,
                 'so2_lb_hr': 150.0,
                 'co2_lb_hr': 18000.0,
                 'particulates_lb_hr': 25.0,
+                'excess_o2_pct': 4.0,
                 'co2_pct': 13.5,
                 'h2o_pct': 10.0,
                 'n2_pct': 72.5,
@@ -646,6 +664,7 @@ class AnnualBoilerSimulator:
                 'opacity_pct': 10,
                 'stack_velocity_fps': 50
             }
+
     
     def _generate_soot_blowing_data(self, soot_blowing_actions: Dict) -> Dict:
         """Generate soot blowing activity data."""
@@ -1042,28 +1061,32 @@ if __name__ == "__main__":
     
     print("ANNUAL BOILER SIMULATOR - API COMPATIBILITY TESTING")
     print("Version 8.2 - API Compatibility Fix")
+    print(f"Execution Time: {datetime.datetime.now()}")
     
-    success = test_fixed_interface()
-    
-    if success:
-        print("\n>> API compatibility fixes validated successfully!")
-        print(">> Ready for full annual simulation")
-    else:
-        print("\n>> API compatibility issues still present")
-        print(">> Review error messages and fix remaining issues")so2_lb_hr,
-                'co2_lb_hr': co2_lb_hr,
-                'particulates_lb_hr': particulates_lb_hr,
-                'excess_o2_pct': excess_o2_pct,
-                'co2_pct': co2_pct,
-                'h2o_pct': h2o_pct,
-                'n2_pct': n2_pct,
-                'co_ppm': np.random.uniform(50, 150),
-                'opacity_pct': np.random.uniform(5, 15),
-                'stack_velocity_fps': np.random.uniform(40, 60)
-            }
+    try:
+        success = test_fixed_interface()
+        
+        if success:
+            print("\n" + "="*60)
+            print(">>> API COMPATIBILITY FIXES VALIDATED SUCCESSFULLY!")
+            print(">>> System ready for full annual simulation")
+            print(">>> Next step: Run 'python simulation/run_annual_simulation.py'")
+            print("="*60)
+            logger.info("API compatibility validation completed successfully")
+            sys.exit(0)
+        else:
+            print("\n" + "="*60)
+            print(">>> API COMPATIBILITY ISSUES STILL PRESENT")
+            print(">>> Review error messages and fix remaining issues")
+            print(">>> Check logs/simulation/ for detailed error information")
+            print("="*60)
+            logger.error("API compatibility validation failed")
+            sys.exit(1)
             
-        except Exception as e:
-            logger.warning(f"Emissions data generation failed: {e}")
-            return {
-                'total_nox_lb_hr': 200.0,
-                'so2_lb_hr': 
+    except Exception as e:
+        print(f"\n[CRITICAL ERROR] Main execution failed: {e}")
+        print("Error details:")
+        traceback.print_exc()
+        logger.error(f"Main execution failed: {e}")
+        logger.error(traceback.format_exc())
+        sys.exit(1)
