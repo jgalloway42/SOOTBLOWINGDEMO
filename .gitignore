@@ -13,9 +13,9 @@ __pycache__/
 .Python
 # data/
 # docs/
-log/
-logs/
-outputs/
+#log/
+#logs/
+#outputs/
 build/
 develop-eggs/
 dist/

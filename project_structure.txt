@@ -1,8 +1,10 @@
 SootblowingDemoJune2025/
 |-- data/
 |-- docs/
+|-- logs/
 |-- models/
 |-- notebooks/
+|-- outputs/
 |-- reports/
 |-- src/
 |-- tests/
