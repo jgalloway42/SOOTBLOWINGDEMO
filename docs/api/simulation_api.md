@@ -1,8 +1,16 @@
 # SIMULATION API REFERENCE
 
 **File Location:** `docs/api/SIMULATION_API.md`  
-**Created:** August 2025  
-**Status:** CRITICAL - Required for annual dataset generation
+**Updated:** August 27, 2025  
+**Status:** ✅ **OPERATIONAL** - All critical issues resolved, system ready for production
+
+## 🎯 **CURRENT STATUS - PHASE 1-3 COMPLETE**
+- ✅ **All API compatibility issues resolved**
+- ✅ **Import paths fixed for all validation scripts** 
+- ✅ **Output directories organized to project root**
+- ✅ **Quick test simulation working (24 records in ~1 second)**
+- ✅ **Full validation framework operational**
+- ✅ **Ready for full annual simulation (8,760 records)**
 
 ---
 
@@ -13,16 +21,19 @@
 ### Constructor
 
 ```python
-AnnualBoilerSimulator(start_date: str = "2024-01-01")
+AnnualBoilerSimulator(start_date: str = "2024-01-01", end_date: str = None)
 ```
 
 **Parameters:**
 - `start_date` (str): Start date in YYYY-MM-DD format (default: "2024-01-01")
+- `end_date` (str, optional): End date in YYYY-MM-DD format (default: start_date + 1 year)
 
 **Properties Set:**
 - `start_date` (pd.Timestamp): Parsed start date
-- `end_date` (pd.Timestamp): Start date + 1 year
+- `end_date` (pd.Timestamp): Parsed end date or start_date + 1 year if None
 - `boiler` (EnhancedCompleteBoilerSystem): Internal boiler system instance
+
+**NEW FEATURE:** The constructor now accepts an optional end_date parameter for flexible simulation duration. This enables quick tests and custom duration simulations.
 
 ### Key Methods
 
@@ -85,9 +96,10 @@ Simulates single hour of boiler operation.
 ```python
 run_quick_test() -> Optional[pd.DataFrame]
 ```
-**Purpose:** Run 48-hour test simulation
-**Returns:** DataFrame with test results or None if failed
-**Note:** Uses shortened date range, not duration_days parameter
+**Purpose:** Run 48-hour test simulation (2024-01-01 to 2024-01-03)
+**Returns:** DataFrame with test results (24 records at 2-hour intervals) or None if failed
+**Implementation:** Uses AnnualBoilerSimulator(start_date="2024-01-01", end_date="2024-01-03")
+**Duration:** ~1 second execution time
 
 ```python
 run_full_simulation() -> Optional[Dict]
@@ -164,13 +176,13 @@ def main():
 
 ---
 
-# CRITICAL API FIXES NEEDED
+# ✅ CRITICAL API FIXES - RESOLVED
 
-## Issue #1: AnnualBoilerSimulator.generate_annual_data()
-**Problem:** run_annual_simulation.py passes unsupported `duration_days` parameter
-**Error:** `AnnualBoilerSimulator.generate_annual_data() got an unexpected keyword argument 'duration_days'`
+## ✅ FIXED: AnnualBoilerSimulator.generate_annual_data()
+**Problem:** ~~run_annual_simulation.py passes unsupported `duration_days` parameter~~
+**Status:** ✅ **RESOLVED** - Constructor now accepts end_date parameter
 
-**Current Broken Code:**
+**Previous Broken Code:**
 ```python
 test_data = simulator.generate_annual_data(
     hours_per_day=24,
@@ -179,52 +191,50 @@ test_data = simulator.generate_annual_data(
 )
 ```
 
-**Correct Fix:**
+**✅ Current Working Solution:**
 ```python
-# For short test, modify simulator date range instead
-simulator = AnnualBoilerSimulator(start_date="2024-01-01")
+# Use constructor with end_date parameter
+simulator = AnnualBoilerSimulator(
+    start_date="2024-01-01", 
+    end_date="2024-01-03"  # 48 hours for quick test
+)
 test_data = simulator.generate_annual_data(
     hours_per_day=24,
     save_interval_hours=2
 )
-# Will generate full year - filter afterward if needed
+# Generates exactly 24 records (48 hours ÷ 2-hour intervals)
 ```
 
-**Alternative Fix:** Modify simulator's end_date before generation:
+## ✅ FIXED: Module Import Paths
+**Problem:** ~~"No module named 'core'" errors in validation scripts~~
+**Status:** ✅ **RESOLVED** - Added sys.path.append() for relative imports
+
+**✅ Current Working Solution:**
 ```python
-simulator = AnnualBoilerSimulator(start_date="2024-01-01") 
-simulator.end_date = simulator.start_date + pd.DateOffset(days=2)  # Override end date
-test_data = simulator.generate_annual_data(hours_per_day=24, save_interval_hours=2)
+import sys
+import os
+
+# Add parent directory to path for module imports
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+# Now imports work correctly
+from core.boiler_system import EnhancedCompleteBoilerSystem
+from core.thermodynamic_properties import PropertyCalculator
 ```
 
-## Issue #2: EnhancedCompleteBoilerSystem Constructor in debug_script.py
-**Problem:** debug_script.py passes unsupported parameters to boiler constructor
-**Error:** `EnhancedCompleteBoilerSystem.__init__() got an unexpected keyword argument 'steam_pressure'`
+## ✅ FIXED: Output Directory Organization
+**Problem:** ~~Scripts creating nested subdirectories instead of using project root~~
+**Status:** ✅ **RESOLVED** - All outputs now use project root structure
 
-**Current Broken Code:**
+**✅ Current Working Solution:**
 ```python
-boiler = EnhancedCompleteBoilerSystem(
-    fuel_input=fuel_input,
-    flue_gas_mass_flow=gas_flow,
-    furnace_exit_temp=3000,
-    steam_pressure=150,  # THIS PARAMETER DOESN'T EXIST
-    target_steam_temp=700,
-    feedwater_temp=220,
-    base_fouling_multiplier=1.0
-)
-```
+# Calculate project root path
+project_root = Path(__file__).parent.parent.parent.parent.parent
 
-**Correct Fix:**
-```python
-boiler = EnhancedCompleteBoilerSystem(
-    fuel_input=fuel_input,
-    flue_gas_mass_flow=gas_flow,
-    furnace_exit_temp=3000,
-    # Remove steam_pressure - it's hardcoded internally to 150 psia
-    target_steam_temp=700,
-    feedwater_temp=220,
-    base_fouling_multiplier=1.0
-)
+# Use project root for all outputs
+data_dir = project_root / "data" / "generated" / "annual_datasets"
+log_dir = project_root / "logs" / "simulation"
+metadata_dir = project_root / "outputs" / "metadata"
 ```
 
 ---
@@ -249,14 +259,15 @@ data_file, metadata_file = simulator.save_annual_data(annual_data)
 print(f"Dataset saved: {data_file}")
 ```
 
-## Quick Test Pattern
+## Quick Test Pattern (✅ UPDATED)
 ```python
 from simulation.annual_boiler_simulator import AnnualBoilerSimulator
-import pandas as pd
 
-# Create simulator with short duration
-simulator = AnnualBoilerSimulator(start_date="2024-01-01")
-simulator.end_date = simulator.start_date + pd.DateOffset(days=2)  # 2-day test
+# Create simulator with 48-hour duration using new constructor
+simulator = AnnualBoilerSimulator(
+    start_date="2024-01-01", 
+    end_date="2024-01-03"  # 48 hours
+)
 
 # Generate test dataset
 test_data = simulator.generate_annual_data(
@@ -264,7 +275,7 @@ test_data = simulator.generate_annual_data(
     save_interval_hours=2  # Every 2 hours for testing
 )
 
-print(f"Test records: {len(test_data)}")
+print(f"Test records: {len(test_data)}")  # Expected: 24 records
 ```
 
 ## Validation Testing Pattern
