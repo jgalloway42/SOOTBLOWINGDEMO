@@ -72,12 +72,15 @@ metadata_dir.mkdir(parents=True, exist_ok=True)
 class AnnualBoilerSimulator:
     """Enhanced annual boiler simulator with FIXED API compatibility."""
     
-    def __init__(self, start_date: str = "2024-01-01"):
+    def __init__(self, start_date: str = "2024-01-01", end_date: str = None):
         """Initialize the enhanced annual boiler simulator with fixed interface."""
         
         # Date configuration
         self.start_date = pd.to_datetime(start_date)
-        self.end_date = self.start_date + pd.DateOffset(years=1)
+        if end_date:
+            self.end_date = pd.to_datetime(end_date)
+        else:
+            self.end_date = self.start_date + pd.DateOffset(years=1)
         
         # Enhanced production patterns for containerboard mill
         self.production_patterns = {

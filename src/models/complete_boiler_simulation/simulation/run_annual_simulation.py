@@ -120,10 +120,13 @@ def run_quick_test():
     print("Testing enhanced boiler system with IAPWS steam properties...")
     
     try:
-        # Initialize enhanced simulator for quick test
+        # Initialize enhanced simulator for quick test (48 hours only)
         print("\n[1/4] Initializing Annual Boiler Simulator...")
         logger.info("Initializing simulator for quick test")
-        simulator = AnnualBoilerSimulator(start_date="2024-01-01")
+        simulator = AnnualBoilerSimulator(
+            start_date="2024-01-01", 
+            end_date="2024-01-03"  # 48 hours = 2 days
+        )
         
         # Generate 48 hours of test data
         print("[2/4] Generating 48-hour test dataset...")
