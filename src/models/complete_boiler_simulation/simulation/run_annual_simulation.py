@@ -130,8 +130,7 @@ def run_quick_test():
         logger.info("Generating test data")
         test_data = simulator.generate_annual_data(
             hours_per_day=24,
-            save_interval_hours=2,  # Every 2 hours for quick test
-            duration_days=2  # Just 2 days for testing
+            save_interval_hours=2  # Every 2 hours for quick test
         )
         
         # Basic validation
