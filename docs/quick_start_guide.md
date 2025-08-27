@@ -1,276 +1,290 @@
 # QUICK START GUIDE
 
-**File Location:** `docs/QUICK_START_GUIDE.md`  
-**Created:** August 2025  
-**Status:** ESSENTIAL - How to run the system
+**Enhanced Annual Boiler Simulation System**  
+**Week 2 Status - File Corruption Issue Identified**  
+**Commercial Demo Timeline: Week 2 of 8**
 
 ---
 
-## PREREQUISITES
+## 🚨 CRITICAL WEEK 2 ISSUE - IMMEDIATE ACTION REQUIRED
 
-### Required Dependencies
-```bash
-pip install iapws          # Steam properties (critical)
-pip install thermo         # Gas mixture properties (optional)
-pip install pandas numpy   # Data processing  
-pip install matplotlib     # Visualization
-pip install scipy          # Statistical analysis
-```
+### **File Corruption Fix (FIRST PRIORITY)**
 
-### Verify Installation
+The `annual_boiler_simulator.py` file is missing its main execution section and needs immediate repair:
+
+**Problem:** File truncated - missing `if __name__ == "__main__":` section  
+**Impact:** Cannot run API compatibility validation  
+**Solution:** Add main section code (provided in Week 2 handoff documentation)  
+**Timeline:** 5 minutes to fix
+
+**After fixing, this should work:**
 ```bash
-python -c "import iapws; print('IAPWS OK')"
-python -c "import pandas as pd; print('Pandas OK')"
+cd src/models/complete_boiler_simulation
+python simulation/annual_boiler_simulator.py
+# Should show: "API COMPATIBILITY FIXES VALIDATED SUCCESSFULLY!"
 ```
 
 ---
 
-## FIRST-TIME SETUP
+## QUICK START SEQUENCE (AFTER FILE FIX)
 
-### 1. Navigate to Working Directory
+### **Step 1: Fix File Corruption (CRITICAL)**
+1. Add missing main section to `simulation/annual_boiler_simulator.py`
+2. Test that file runs: `python simulation/annual_boiler_simulator.py`
+3. Should show API compatibility success message
+
+### **Step 2: Rapid Validation (2 minutes)**
+```bash
+cd src/models/complete_boiler_simulation
+
+# Quick 30-second test
+python quick_api_test.py
+
+# Comprehensive 2-minute test  
+python simulation/debug_script.py
+```
+
+### **Step 3: Test Simulation (30 minutes)**
+```bash
+# Run annual simulation with quick test
+python simulation/run_annual_simulation.py
+
+# Choose Option 1: Quick Test (24 hours)
+# Should generate ~24 records with 84% average efficiency
+```
+
+### **Step 4: Full Dataset Generation (2-3 hours)**
+```bash
+# If quick test passes, run full simulation
+# Choose Option 2: Full Annual Simulation (8760 hours) 
+# Generates complete ML training dataset
+```
+
+---
+
+## SYSTEM OVERVIEW
+
+### **Purpose**
+AI/ML-driven soot blowing optimization for pulverized coal-fired boilers in containerboard mills.
+
+### **Technology Stack**
+- **Physics Engine**: IAPWS-97 steam properties
+- **Efficiency Modeling**: Realistic 75-88% range with 15-20% variation
+- **Operating Range**: 60-105% load factor (industrial standard)
+- **Data Output**: ML-ready 148-feature dataset
+
+### **Week 2 Status**
+- **Completion**: 98% complete
+- **Blocker**: File corruption in main simulator (easy fix)
+- **Validation**: API fixes applied, tests pending
+- **Ready For**: Annual simulation and ML dataset generation
+
+---
+
+## INSTALLATION AND SETUP
+
+### **Dependencies**
+```bash
+pip install iapws pandas numpy matplotlib scipy
+```
+
+### **Directory Structure**
+```
+src/models/complete_boiler_simulation/
+├── core/                    # Physics engine
+├── simulation/              # Annual simulation
+├── analysis/               # Data analysis  
+├── tests/                  # Test scripts
+└── quick_api_test.py       # Rapid validation
+
+docs/                       # Documentation
+data/generated/             # Output datasets
+logs/                      # Log files  
+outputs/                   # Metadata and reports
+```
+
+### **Working Directory**
+**IMPORTANT:** Always run commands from:
 ```bash
 cd src/models/complete_boiler_simulation
 ```
-
-### 2. Verify File Structure
-```
-complete_boiler_simulation/
-├── core/                   # Core system files
-├── simulation/             # Simulation runners  
-├── analysis/               # Analysis tools
-└── tests/                  # Test scripts
-```
-
-### 3. Test Basic Imports
-```bash
-python -c "from core.boiler_system import EnhancedCompleteBoilerSystem; print('Core imports working')"
-python -c "from simulation.annual_boiler_simulator import AnnualBoilerSimulator; print('Simulation imports working')"
-```
-
-If imports fail, check `docs/api/KNOWN_ISSUES_AND_FIXES.md`
 
 ---
 
 ## BASIC USAGE
 
-### Option 1: Quick System Test (2 minutes)
-
-**Create a simple test file:**
-```python
-# File: quick_test.py
-from core.boiler_system import EnhancedCompleteBoilerSystem
-
-# Create boiler system
-boiler = EnhancedCompleteBoilerSystem(fuel_input=100e6)
-
-# Solve system
-results = boiler.solve_enhanced_system(max_iterations=10, tolerance=10.0)
-
-# Display results
-print(f"Converged: {results['converged']}")
-if results['converged']:
-    print(f"Efficiency: {results['final_efficiency']:.1%}")
-    print(f"Steam Temp: {results['final_steam_temperature']:.0f}°F")
-    print(f"Stack Temp: {results['final_stack_temperature']:.0f}°F")
-    print(f"Energy Balance Error: {results['energy_balance_error']:.1%}")
-```
-
-**Run test:**
+### **Option 1: API Compatibility Validation (After File Fix)**
 ```bash
-python quick_test.py
-```
-
-**Expected Output:**
-```
-Converged: True
-Efficiency: 85.0%
-Steam Temp: 700°F
-Stack Temp: 280°F
-Energy Balance Error: 3.2%
-```
-
-### Option 2: Generate Sample Dataset (5 minutes)
-
-```python
-# File: sample_dataset.py
-import pandas as pd
-from simulation.annual_boiler_simulator import AnnualBoilerSimulator
-
-# Create simulator for 2-day test
-simulator = AnnualBoilerSimulator(start_date="2024-01-01")
-simulator.end_date = simulator.start_date + pd.DateOffset(days=2)
-
-# Generate sample data
-sample_data = simulator.generate_annual_data(
-    hours_per_day=24,
-    save_interval_hours=2  # Every 2 hours = 24 records
-)
-
-# Display sample
-print(f"Generated {len(sample_data)} records")
-print("\nSample columns:")
-for col in sample_data.columns[:10]:
-    print(f"  {col}")
-    
-print(f"\nEfficiency range: {sample_data['system_efficiency'].min():.1%} - {sample_data['system_efficiency'].max():.1%}")
-```
-
----
-
-## STANDARD WORKFLOWS
-
-### Workflow 1: Run System Validation
-
-**Purpose:** Verify all components work correctly  
-**Time:** 15-30 minutes
-
-```bash
-# Run comprehensive validation
+# Test that all APIs work correctly
+python simulation/annual_boiler_simulator.py
+python quick_api_test.py
 python simulation/debug_script.py
 ```
 
-**Expected Output:**
-```
-Tests Passed: 4/4
-Success Rate: 100.0%
-OVERALL PHASE 3 SUCCESS: YES
-```
-
-**If validation fails:** Check `logs/debug/` for detailed error logs
-
-### Workflow 2: Generate Annual Dataset
-
-**Purpose:** Create full 8760-hour dataset for ML training  
-**Time:** 1-3 hours depending on system performance
-
+### **Option 2: Quick Dataset Generation**
 ```bash
-# Run annual simulation with menu interface
+# Generate 24-hour test dataset
 python simulation/run_annual_simulation.py
+# Choose Option 1: Quick Test
 ```
 
-**Menu Options:**
-- **Option 1:** Quick Test (48 hours) - for testing
-- **Option 2:** Full Annual Simulation (8760 hours) - for production
-- **Option 3:** Comprehensive (quick test + full simulation)
+### **Option 3: Full ML Dataset Generation**
+```bash
+# Generate complete 8760-hour dataset for ML training
+python simulation/run_annual_simulation.py  
+# Choose Option 2: Full Annual Simulation
+```
 
-**Expected Output Files:**
-- `data/generated/annual_datasets/massachusetts_boiler_annual_YYYYMMDD_HHMMSS.csv`
-- `outputs/metadata/massachusetts_boiler_annual_metadata_YYYYMMDD_HHMMSS.txt`
-
-### Workflow 3: Analyze Generated Dataset
-
+### **Option 4: Custom Analysis**
 ```python
-# File: analyze_dataset.py
-import pandas as pd
 from analysis.data_analysis_tools import BoilerDataAnalyzer
 
-# Load generated dataset
-df = pd.read_csv('data/generated/annual_datasets/massachusetts_boiler_annual_LATEST.csv')
-
-# Create analyzer
-analyzer = BoilerDataAnalyzer(df)
-
-# Generate comprehensive analysis
-report = analyzer.generate_comprehensive_report(save_plots=True)
-
-# Display key findings
-print(f"Dataset Summary:")
-print(f"  Records: {len(df):,}")
-print(f"  Efficiency Range: {df['system_efficiency'].min():.1%} - {df['system_efficiency'].max():.1%}")
-print(f"  Load Factor Range: {df['load_factor'].min():.1%} - {df['load_factor'].max():.1%}")
+# Load existing dataset
+analyzer = BoilerDataAnalyzer("data/generated/your_dataset.csv")
+report = analyzer.generate_comprehensive_report()
 ```
 
 ---
 
-## TROUBLESHOOTING COMMON ISSUES
+## OUTPUT FILES
 
-### Issue: Import Errors
+### **Quick Test (24 hours):**
+- `data/generated/annual_datasets/massachusetts_boiler_annual_YYYYMMDD_HHMMSS.csv` (~24 records)
+- `outputs/metadata/massachusetts_boiler_annual_metadata_YYYYMMDD_HHMMSS.txt`
+
+### **Full Simulation (8760 hours):**
+- `data/generated/annual_datasets/massachusetts_boiler_annual_YYYYMMDD_HHMMSS.csv` (~15-25MB)
+- `outputs/metadata/massachusetts_boiler_annual_metadata_YYYYMMDD_HHMMSS.txt`
+- `outputs/analysis/analysis_report_YYYYMMDD_HHMMSS.txt`
+
+### **Log Files:**
+- `logs/simulation/annual_simulation.log` - Main simulation log
+- `logs/debug/api_compatibility_validation_report_YYYYMMDD_HHMMSS.txt` - Validation results
+
+---
+
+## DATASET FEATURES (148 COLUMNS)
+
+### **Operational Data (7 columns):**
+Load factor, temperatures, flows, pressures
+
+### **Coal & Combustion (17 columns):**
+Coal properties, air flows, combustion efficiency
+
+### **Emissions (11 columns):**
+NOx, SO2, CO2, particulates, stack composition
+
+### **System Performance (13 columns):**
+System efficiency, energy balance, heat transfer rates
+
+### **Soot Blowing (16 columns):**
+Cleaning schedules, effectiveness, maintenance timing
+
+### **Fouling Analysis (42 columns):**
+Progressive fouling factors by section and segment
+
+### **Section Details (42 columns):**
+Heat transfer rates and temperatures by boiler section
+
+---
+
+## TROUBLESHOOTING
+
+### **Critical Issues**
+
+**1. File Corruption (Week 2 Critical Issue)**
+```
+# File cannot be executed directly
+python simulation/annual_boiler_simulator.py
+# No output or immediate exit
+```
+**Solution:** Add missing main section (see KNOWN_ISSUES_AND_FIXES.md)
+
+**2. Module Import Errors**
 ```
 ModuleNotFoundError: No module named 'core.boiler_system'
 ```
-
-**Solution:** Make sure you're in the correct directory
+**Solution:** Verify working directory
 ```bash
 cd src/models/complete_boiler_simulation
-python -c "import core.boiler_system"  # Should work from this directory
+pwd  # Should end in complete_boiler_simulation
 ```
 
-### Issue: API Parameter Errors  
+**3. API Parameter Errors (Should be fixed)**
 ```
-TypeError: got an unexpected keyword argument 'steam_pressure'
+TypeError: __init__() got an unexpected keyword argument 'steam_pressure'
 ```
+**Solution:** Use correct parameters (see KNOWN_ISSUES_AND_FIXES.md for all correct APIs)
 
-**Solution:** Check `docs/api/KNOWN_ISSUES_AND_FIXES.md` for correct parameter usage
+### **Validation Issues**
 
-### Issue: Solver Convergence Failures
+**4. Solver Convergence Problems**
 ```
-Converged: False
-Energy Balance Error: 25.3%
+Converged: False, Energy Balance Error: 25.3%
 ```
-
-**Solution:** Use relaxed solver settings for testing
+**Solution:** Use relaxed settings for testing
 ```python
-results = boiler.solve_enhanced_system(
-    max_iterations=20,    # More iterations
-    tolerance=15.0        # Relaxed tolerance for testing
-)
+results = boiler.solve_enhanced_system(max_iterations=25, tolerance=20.0)
 ```
 
-### Issue: Missing IAPWS Library
+**5. Unicode Crashes (Should be fixed)**
+```
+UnicodeEncodeError: 'charmap' codec can't encode character
+```
+**Solution:** Already fixed - all Unicode characters removed
+
+**6. Missing Dependencies**
 ```
 ImportError: No module named 'iapws'
 ```
-
-**Solution:** Install required dependency
+**Solution:** Install required packages
 ```bash
-pip install iapws
+pip install iapws pandas numpy matplotlib scipy
 ```
 
 ---
 
-## PERFORMANCE EXPECTATIONS
+## DEVELOPMENT PATHS (WEEK 2 PRIORITIES)
 
-### System Performance Targets
+### For Immediate Validation:
+1. **Fix File Corruption**: Restore annual_boiler_simulator.py main section
+2. **Run Validation**: Execute all three validation scripts
+3. **API Testing**: Confirm all API compatibility fixes work
+4. **Ready Check**: System validated for annual simulation
 
-**Efficiency Variation:** 15-20% across load range (excellent)  
-**Energy Balance Error:** <5% (good), <15% (acceptable for testing)  
-**Solver Convergence:** >90% of scenarios  
-**Dataset Generation:** 1000-2000 records per hour  
+### For Dataset Generation:
+1. **Quick Test**: 24-hour simulation to verify pipeline
+2. **Efficiency Check**: Values in 75-88% range  
+3. **Full Simulation**: Complete 8760-hour dataset generation
+4. **Quality Validation**: Confirm ML-ready dataset
 
-### Expected Results Ranges
+### For ML Model Development (After Dataset):
+1. **Feature Analysis**: Explore 148-column feature set
+2. **Target Definition**: Focus on system_efficiency optimization
+3. **Data Quality**: Validate realistic operational patterns
+4. **Model Training**: Develop soot blowing optimization algorithms
 
-**System Efficiency:** 75% - 88%  
-**Steam Temperature:** 680°F - 720°F  
-**Stack Temperature:** 250°F - 350°F  
-**Load Factor Range:** 60% - 105%  
-
-### File Sizes
-
-**48-hour dataset:** ~0.5 MB (24 records)  
-**Full annual dataset:** ~15-25 MB (8760 records)  
-**Metadata files:** ~5-10 KB  
+### For Commercial Demo (Week 2 Goal):
+1. **Dataset Validation**: Confirm realistic efficiency improvements
+2. **Demo Preparation**: System ready for client demonstrations  
+3. **Performance Metrics**: Document efficiency gains for demo
+4. **Documentation**: Complete user guides for demo deployment
 
 ---
 
-## NEXT STEPS
+## SUCCESS INDICATORS
 
-### For System Development:
-1. **Fix Known Issues:** Address API compatibility problems
-2. **Energy Balance:** Improve energy balance accuracy
-3. **Component Integration:** Fix heat transfer calculations
-4. **Validation:** Achieve 100% test pass rate
+### **Week 2 Minimum Success:**
+✅ File corruption fixed - annual_boiler_simulator.py runs successfully  
+✅ All validation tests pass without API errors  
+✅ Quick 24-hour simulation completes with realistic data  
+✅ System ready for full annual simulation
 
-### For ML Model Development:
-1. **Generate Dataset:** Create full annual dataset
-2. **Data Quality Check:** Validate dataset completeness  
-3. **Feature Engineering:** Extract relevant features for soot blowing optimization
-4. **Model Training:** Develop prediction algorithms
-
-### For Production Deployment:
-1. **Performance Optimization:** Improve solver stability
-2. **User Interface:** Create production interface
-3. **Integration Testing:** Test with real plant data
-4. **Documentation:** Complete user manuals
+### **Week 2 Full Success:**
+✅ Complete 8760-hour annual simulation executed successfully  
+✅ Full ML training dataset generated (15-25MB)  
+✅ Dataset quality validation confirms commercial demo readiness  
+✅ System performance meets demo requirements
 
 ---
 
@@ -278,7 +292,7 @@ pip install iapws
 
 **API Reference:** `docs/api/CORE_SYSTEM_API.md`  
 **Integration Guide:** `docs/api/INTEGRATION_GUIDE.md`  
-**Known Issues:** `docs/api/KNOWN_ISSUES_AND_FIXES.md`  
+**Known Issues:** `docs/api/KNOWN_ISSUES_AND_FIXES.md` **(Updated for Week 2)**  
 **Project Status:** `docs/CURRENT_PROJECT_STATUS.md`  
 
 **Log Files:** `logs/debug/`, `logs/simulation/`  
@@ -287,4 +301,15 @@ pip install iapws
 
 ---
 
-**Success Indicator:** When you can run `python simulation/run_annual_simulation.py` and generate a complete 8760-hour dataset without errors, the system is ready for ML model development.
+## COMMERCIAL DEMO CONTEXT (WEEK 2)
+
+**Client:** Containerboard mill with realistic production patterns  
+**Deliverable:** Functioning ML training dataset for soot blowing optimization  
+**Timeline:** Week 2 of 8-week commercial demo  
+**Success Metric:** System generates credible efficiency improvements for demo  
+
+**Critical Path:** Fix file → Validate APIs → Generate dataset → Ready for ML development
+
+---
+
+**Success Indicator:** When `python simulation/run_annual_simulation.py` successfully completes a 24-hour quick test with realistic efficiency values (75-88%), the file corruption is resolved and the system is ready for full dataset generation.
