@@ -2,26 +2,61 @@
 
 **File Location:** `docs/api/KNOWN_ISSUES_AND_FIXES.md`  
 **Created:** August 2025  
-**Status:** CRITICAL - API Compatibility Fixes Applied, File Corruption Identified  
-**Version:** 8.3 - Week 2 Status Update
+**Status:** ✅ MAJOR MILESTONE - Comprehensive EDA Analysis Complete + Critical Physics Issues Identified  
+**Version:** 8.4 - EDA Analysis Complete, Physics Improvement Phase Ready
 
 ---
 
-## 🚨 CRITICAL CURRENT ISSUE (WEEK 2)
+## ✅ MAJOR MILESTONE ACHIEVED (LATEST UPDATE)
 
-### ❌ **ACTIVE ISSUE: File Corruption in annual_boiler_simulator.py**
+### 🎯 **COMPLETED: Comprehensive Fouling Dynamics Validation & EDA Analysis**
 
-**Issue:** Main execution section missing from `annual_boiler_simulator.py` - file appears truncated
+**Achievement:** Successfully completed comprehensive EDA analysis of validated boiler simulation dataset with advanced fouling physics validation framework.
 
-**Symptoms:**
+**New Deliverables:**
+- Complete EDA notebook: `2.4-jdg-boiler-fouling-dataset-eda-validated-simulation.ipynb`
+- Comprehensive fouling dynamics validation analysis (7 components)
+- Industrial physics validation against real-world benchmarks
+- Cleaning schedule optimization analysis with cost-benefit modeling
+- CEMS data correlation analysis for real-world monitoring integration
+
+## 🚨 CRITICAL PHYSICS ISSUES IDENTIFIED (REQUIRES IMMEDIATE ATTENTION)
+
+### ❌ **NEWLY DISCOVERED: Simulation Physics Realism Issues**
+
+**Issue:** Comprehensive EDA analysis reveals critical physics modeling problems in simulation engine
+
+**Critical Findings from Validation Analysis:**
 ```bash
-# File ends abruptly after test_fixed_interface() function
-# Missing if __name__ == "__main__": section
-# Cannot run python simulation/annual_boiler_simulator.py directly
+# FOULING PHYSICS - BROKEN
+- Time-fouling correlations: r=0.007-0.016 (should be >0.4)
+- Efficiency-fouling: r=+0.122 (should be negative <-0.3)
+- CEMS correlations: mostly wrong direction
+
+# OPERATIONAL PARAMETERS - MAJOR ISSUES  
+- Load factor compliance: 0.0% within 60-105% range
+- 13 constant columns with no realistic variation
+- Perfect correlations (1.000) indicating unrealistic coupling
+
+# CLEANING EFFECTIVENESS - NOT WORKING
+- Soot blowing shows no proper fouling reduction
+- No realistic cleaning effectiveness patterns
 ```
 
-**IMMEDIATE FIX REQUIRED:**
-Add this code to the end of `simulation/annual_boiler_simulator.py`:
+**PHYSICS MODEL IMPROVEMENTS REQUIRED:**
+
+**Priority 1 - Core Physics Relationships:**
+1. Correct load factor range calculation (unit conversion issue)
+2. Adjust efficiency-fouling correlation direction
+3. Enhance time-based fouling accumulation modeling
+4. Strengthen CEMS stack temperature correlations
+
+**Priority 2 - Parameter Realism Enhancements:**
+1. Add realistic variability to constant parameters
+2. Implement proper soot blowing effectiveness modeling (80-95% removal)
+3. Introduce realistic parameter noise and independence
+
+**IMPLEMENTATION TIMELINE:** 2-day focused development cycle for production readiness
 
 ```python
 if __name__ == "__main__":
