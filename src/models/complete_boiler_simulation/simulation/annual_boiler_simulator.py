@@ -279,14 +279,23 @@ class AnnualBoilerSimulator:
                     self.simulation_stats['solver_failures'] += 1
                 
                 # FIXED: Extract performance metrics with proper fallback handling
-                system_efficiency = solve_results.get('final_efficiency', 
+                base_system_efficiency = solve_results.get('final_efficiency', 
                                   system_performance.get('system_efficiency', 0.82))
-                stack_temp = solve_results.get('final_stack_temperature', 
+                base_stack_temp = solve_results.get('final_stack_temperature', 
                             system_performance.get('stack_temperature', 280.0))
                 steam_temp = solve_results.get('final_steam_temperature',
                             system_performance.get('final_steam_temperature', 700.0))
                 energy_error = solve_results.get('energy_balance_error',
                               system_performance.get('energy_balance_error', 0.05))
+                
+                # CRITICAL FIX: Apply fouling-based efficiency degradation and temperature impacts
+                fouling_data = self._generate_fouling_data(current_datetime)
+                fouling_efficiency_impact = self._calculate_fouling_efficiency_impact(fouling_data)
+                system_efficiency = base_system_efficiency * fouling_efficiency_impact
+                
+                # CRITICAL FIX: Adjust stack temperature based on fouling (reduced heat transfer = higher stack temp)
+                fouling_temp_impact = self._calculate_fouling_temperature_impact(fouling_data)
+                stack_temp = base_stack_temp + fouling_temp_impact
                 
                 # Track successful API fixes
                 self.simulation_stats['api_compatibility_fixes'] += 1
@@ -295,10 +304,18 @@ class AnnualBoilerSimulator:
                 logger.warning(f"Solver interface error: {solver_error}")
                 # Provide fallback values when solver interface fails
                 converged = False
-                system_efficiency = 0.82  # Reasonable fallback
-                stack_temp = 280.0
+                base_system_efficiency = 0.82  # Reasonable fallback
+                base_stack_temp = 280.0
                 steam_temp = 700.0
                 energy_error = 0.10
+                
+                # Apply fouling impacts to fallback values too
+                fouling_data = self._generate_fouling_data(current_datetime)
+                fouling_efficiency_impact = self._calculate_fouling_efficiency_impact(fouling_data)
+                system_efficiency = base_system_efficiency * fouling_efficiency_impact
+                fouling_temp_impact = self._calculate_fouling_temperature_impact(fouling_data)
+                stack_temp = base_stack_temp + fouling_temp_impact
+                
                 self.simulation_stats['solver_failures'] += 1
             
             # Generate comprehensive operation data with FIXED API results
@@ -312,8 +329,7 @@ class AnnualBoilerSimulator:
             # Generate soot blowing data
             soot_blowing_data = self._generate_soot_blowing_data(soot_blowing_actions)
             
-            # Generate fouling data
-            fouling_data = self._generate_fouling_data(current_datetime)
+            # Fouling data already generated above for efficiency calculation
             
             # Generate section-specific data
             section_data = self._generate_section_data(stack_temp, steam_temp)
@@ -534,32 +550,31 @@ class AnnualBoilerSimulator:
         """Generate realistic coal combustion data."""
         
         try:
-            # Use combustion model if available
-            if hasattr(self, 'combustion_model'):
-                # Basic coal properties based on quality
-                coal_quality = operating_conditions.get('coal_quality', 'bituminous')
-                
-                if coal_quality == 'bituminous':
-                    heating_value = np.random.uniform(12000, 13500)  # Btu/lb
-                    carbon_pct = np.random.uniform(70, 80)
-                    volatile_pct = np.random.uniform(30, 40)
-                    sulfur_pct = np.random.uniform(1.0, 3.0)
-                    ash_pct = np.random.uniform(6, 12)
-                    moisture_pct = np.random.uniform(8, 15)
-                elif coal_quality == 'sub_bituminous':
-                    heating_value = np.random.uniform(8500, 12000)
-                    carbon_pct = np.random.uniform(60, 70)
-                    volatile_pct = np.random.uniform(35, 45)
-                    sulfur_pct = np.random.uniform(0.5, 2.0)
-                    ash_pct = np.random.uniform(8, 15)
-                    moisture_pct = np.random.uniform(15, 25)
-                else:  # lignite
-                    heating_value = np.random.uniform(6500, 8500)
-                    carbon_pct = np.random.uniform(50, 60)
-                    volatile_pct = np.random.uniform(40, 50)
-                    sulfur_pct = np.random.uniform(0.5, 1.5)
-                    ash_pct = np.random.uniform(10, 20)
-                    moisture_pct = np.random.uniform(25, 40)
+            # CRITICAL FIX: Always generate variable coal properties (remove combustion_model dependency)
+            # Basic coal properties based on quality with realistic variations
+            coal_quality = operating_conditions.get('coal_quality', 'bituminous')
+            
+            if coal_quality == 'bituminous':
+                heating_value = np.random.uniform(12000, 13500)  # Btu/lb
+                carbon_pct = np.random.uniform(70, 80)
+                volatile_pct = np.random.uniform(30, 40)
+                sulfur_pct = np.random.uniform(1.0, 3.0)
+                ash_pct = np.random.uniform(6, 12)
+                moisture_pct = np.random.uniform(8, 15)
+            elif coal_quality == 'sub_bituminous':
+                heating_value = np.random.uniform(8500, 12000)
+                carbon_pct = np.random.uniform(60, 70)
+                volatile_pct = np.random.uniform(35, 45)
+                sulfur_pct = np.random.uniform(0.5, 2.0)
+                ash_pct = np.random.uniform(8, 15)
+                moisture_pct = np.random.uniform(15, 25)
+            else:  # lignite
+                heating_value = np.random.uniform(6500, 8500)
+                carbon_pct = np.random.uniform(50, 60)
+                volatile_pct = np.random.uniform(35, 45)
+                sulfur_pct = np.random.uniform(0.5, 1.5)
+                ash_pct = np.random.uniform(10, 20)
+                moisture_pct = np.random.uniform(25, 40)
             
             # Calculate coal consumption rate
             fuel_input = operating_conditions.get('fuel_input_btu_hr', 85e6)
@@ -713,49 +728,77 @@ class AnnualBoilerSimulator:
         }
     
     def _generate_fouling_data(self, current_datetime: datetime.datetime) -> Dict:
-        """Generate realistic fouling factor data for all boiler sections."""
+        """
+        CRITICAL FIX: Generate realistic fouling factor data based on time since last cleaning.
         
-        # Calculate days since start of simulation
-        days_running = (current_datetime - self.start_date).total_seconds() / 86400
+        This fixes the major issue where fouling was accumulating based on total simulation time
+        instead of time since last soot blowing for each section.
+        """
         
         fouling_data = {}
         
-        # Define fouling progression rates for different sections (per day)
+        # Define fouling progression rates for different sections (per hour)
+        # These rates reflect industrial boiler fouling behavior
         fouling_rates = {
-            'furnace': 0.001,           # Slow fouling in furnace
-            'generating_bank': 0.002,   # Moderate fouling
-            'superheater_1': 0.003,     # Higher fouling
-            'superheater_2': 0.003,     # Higher fouling
-            'economizer_1': 0.004,      # High fouling (lower temp)
-            'economizer_2': 0.004,      # High fouling
-            'air_heater': 0.005         # Highest fouling (coldest section)
+            'furnace': 0.00004,           # Slow fouling in high-temperature furnace (0.04% per hour)
+            'generating_bank': 0.00008,   # Moderate fouling (0.08% per hour)
+            'superheater_1': 0.00012,     # Higher fouling in superheater (0.12% per hour)
+            'superheater_2': 0.00015,     # Slightly higher in secondary SH (0.15% per hour)
+            'economizer_1': 0.00020,      # High fouling in lower temp economizer (0.20% per hour)
+            'economizer_2': 0.00025,      # Higher fouling in secondary economizer (0.25% per hour)
+            'air_heater': 0.00030         # Highest fouling in coldest section (0.30% per hour)
         }
         
-        # Generate fouling factors for each section
+        # Generate fouling factors for each section based on hours since last cleaning
         for section, base_rate in fouling_rates.items():
+            # Get hours since last cleaning for this specific section
+            section_key = section.replace('_', ' ')
+            hours_since_cleaning = 0
+            
+            # Find the hours since last cleaning for this section
+            if hasattr(self, 'last_cleaned') and section_key in self.last_cleaned:
+                hours_since_cleaning = (current_datetime - self.last_cleaned[section_key]).total_seconds() / 3600
+            else:
+                # If no cleaning history, use hours since simulation start
+                hours_since_cleaning = (current_datetime - self.start_date).total_seconds() / 3600
+            
             # Start with clean condition (1.0 = no fouling)
             base_fouling = 1.0
             
-            # Add progressive fouling based on time
-            fouling_accumulation = base_rate * days_running
+            # CRITICAL FIX: Fouling accumulation based on time since LAST CLEANING, not total time
+            fouling_accumulation = base_rate * hours_since_cleaning
+            
+            # Add coal-dependent fouling (more fouling with lower quality coal)
+            coal_quality = getattr(self, '_current_coal_quality', 'bituminous')
+            coal_fouling_multiplier = {
+                'bituminous': 1.0,        # Baseline
+                'sub_bituminous': 1.2,    # 20% more fouling
+                'lignite': 1.5            # 50% more fouling
+            }.get(coal_quality, 1.0)
+            
+            fouling_accumulation *= coal_fouling_multiplier
             
             # Add some realistic variation
-            variation = np.random.uniform(-0.001, 0.001)
+            variation = np.random.uniform(-0.002, 0.002)
             
             # Calculate current fouling factor (higher = more fouling)
             current_fouling = base_fouling + fouling_accumulation + variation
             
-            # Apply realistic bounds
-            current_fouling = max(1.0, min(1.5, current_fouling))  # 1.0 to 1.5 range
+            # Apply realistic bounds based on industrial experience
+            current_fouling = max(1.0, min(1.25, current_fouling))  # 1.0 to 1.25 range
             
+            # Store fouling data
             fouling_data[f'{section}_fouling_factor'] = current_fouling
             fouling_data[f'{section}_heat_transfer_loss_pct'] = (current_fouling - 1.0) * 100
             
             # Generate segment-specific data (6 segments per section)
             for segment in range(1, 7):
-                segment_variation = np.random.uniform(-0.02, 0.02)
-                segment_fouling = max(1.0, current_fouling + segment_variation)
+                segment_variation = np.random.uniform(-0.01, 0.01)
+                segment_fouling = max(1.0, min(1.25, current_fouling + segment_variation))
                 fouling_data[f'{section}_segment_{segment}_fouling'] = segment_fouling
+            
+            # Store hours since cleaning for validation
+            fouling_data[f'hours_since_last_{section}'] = hours_since_cleaning
         
         return fouling_data
     
@@ -984,6 +1027,101 @@ class AnnualBoilerSimulator:
             logger.info(f"  Stack temp variation: {annual_data['stack_temp_F'].std():.1f}F std dev")
         
         return str(data_filepath), str(metadata_filepath)
+    
+    def _calculate_fouling_efficiency_impact(self, fouling_data: Dict) -> float:
+        """
+        CRITICAL FIX: Calculate efficiency impact based on fouling factors.
+        
+        This method implements realistic industrial fouling impact on boiler efficiency:
+        - Each boiler section contributes to overall efficiency loss
+        - Fouling factor > 1.0 reduces heat transfer effectiveness
+        - Weighted by section importance for heat transfer
+        """
+        
+        try:
+            # Section weights based on heat transfer importance
+            section_weights = {
+                'furnace_fouling_factor': 0.15,          # Furnace contributes 15% to efficiency loss
+                'generating_bank_fouling_factor': 0.25,  # Generating bank most critical (25%)
+                'superheater_1_fouling_factor': 0.20,    # Superheaters important (20% each)
+                'superheater_2_fouling_factor': 0.20,    
+                'economizer_1_fouling_factor': 0.10,     # Economizers less critical (10% each)
+                'economizer_2_fouling_factor': 0.05,
+                'air_heater_fouling_factor': 0.05        # Air heater least critical (5%)
+            }
+            
+            # Calculate weighted fouling impact
+            total_fouling_impact = 0.0
+            
+            for section, weight in section_weights.items():
+                fouling_factor = fouling_data.get(section, 1.0)
+                
+                # Convert fouling factor to efficiency loss
+                # fouling_factor = 1.0 means no fouling (no loss)
+                # fouling_factor = 1.15 means 15% fouling -> ~3-5% efficiency loss
+                section_efficiency_loss = (fouling_factor - 1.0) * 0.25  # 25% scaling factor
+                weighted_loss = section_efficiency_loss * weight
+                total_fouling_impact += weighted_loss
+            
+            # Calculate efficiency multiplier (1.0 = no impact, <1.0 = reduced efficiency)
+            efficiency_multiplier = 1.0 - total_fouling_impact
+            
+            # Ensure reasonable bounds (minimum 70% efficiency, maximum 100%)
+            efficiency_multiplier = max(0.70, min(1.0, efficiency_multiplier))
+            
+            # Debug logging for validation
+            if total_fouling_impact > 0.05:  # Log significant fouling impact (>5%)
+                logger.debug(f"Significant fouling impact: {total_fouling_impact:.1%} efficiency reduction")
+            
+            return efficiency_multiplier
+            
+        except Exception as e:
+            logger.warning(f"Fouling efficiency calculation failed: {e}")
+            return 1.0  # No impact fallback
+    
+    def _calculate_fouling_temperature_impact(self, fouling_data: Dict) -> float:
+        """
+        CRITICAL FIX: Calculate stack temperature increase due to fouling.
+        
+        Fouling reduces heat transfer effectiveness, causing higher stack temperatures.
+        This creates the expected positive correlation between fouling and stack temperature.
+        """
+        
+        try:
+            # Heat transfer sections that most impact stack temperature (downstream sections)
+            temp_impact_weights = {
+                'economizer_1_fouling_factor': 0.30,     # Economizer 1 most impact (30%)
+                'economizer_2_fouling_factor': 0.25,     # Economizer 2 high impact (25%)
+                'air_heater_fouling_factor': 0.20,       # Air heater moderate impact (20%)
+                'superheater_2_fouling_factor': 0.15,    # Secondary superheater (15%)
+                'superheater_1_fouling_factor': 0.10,    # Primary superheater (10%)
+            }
+            
+            # Calculate weighted fouling impact on temperature
+            total_temp_impact = 0.0
+            
+            for section, weight in temp_impact_weights.items():
+                fouling_factor = fouling_data.get(section, 1.0)
+                
+                # Convert fouling factor to temperature increase
+                # fouling_factor = 1.0 means no fouling (no temp increase)
+                # fouling_factor = 1.15 means 15% fouling -> ~10-20°F increase
+                section_temp_increase = (fouling_factor - 1.0) * 120  # 120°F per unit fouling
+                weighted_temp_increase = section_temp_increase * weight
+                total_temp_impact += weighted_temp_increase
+            
+            # Ensure reasonable bounds (0-60°F maximum increase)
+            total_temp_impact = max(0, min(60.0, total_temp_impact))
+            
+            # Debug logging for significant temperature increases
+            if total_temp_impact > 15.0:  # Log significant temp impact (>15°F)
+                logger.debug(f"Significant fouling temperature impact: {total_temp_impact:.1f}°F increase")
+            
+            return total_temp_impact
+            
+        except Exception as e:
+            logger.warning(f"Fouling temperature calculation failed: {e}")
+            return 0.0  # No impact fallback
 
 
 # Test and validation functions
