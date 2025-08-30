@@ -69,6 +69,49 @@ jupyter notebook notebooks/2.5-jdg-boiler-fouling-dataset-physics-corrected-sim-
 python src/data_generation/run_annual_simulation.py
 ```
 
+## Project Backup and Compression
+
+### Creating Efficient Backups
+The project can be compressed efficiently by excluding the virtual environment and cache files:
+
+```bash
+# Navigate to workspace directory
+cd C:\Users\sesa703683\Documents\workspace
+
+# Create compressed backup (recommended - excludes virtual environment)
+tar --exclude='SootblowingDemoJune2025/SOOTBLOWER' --exclude='*.pyc' --exclude='__pycache__' -czf SootblowingDemo_backup_$(date +%Y%m%d_%H%M%S).tar.gz SootblowingDemoJune2025/
+
+# Alternative: Include everything (much larger file)
+tar -czf SootblowingDemo_full_backup_$(date +%Y%m%d_%H%M%S).tar.gz SootblowingDemoJune2025/
+```
+
+### Backup Specifications
+- **Compressed Size**: ~158MB (excluding virtual environment)
+- **Full Size**: ~777MB (including virtual environment)
+- **Compression Ratio**: ~95% reduction when excluding SOOTBLOWER/
+- **Location**: Backups created in parent workspace directory
+
+### What's Included in Recommended Backup
+- All source code (`src/` directory)
+- All notebooks (cleaned and functional)
+- Analysis modules and datasets
+- Documentation and configuration files
+- Generated data and outputs
+
+### What's Excluded (for efficiency)
+- Virtual environment (`SOOTBLOWER/` directory)
+- Python cache files (`__pycache__/`, `*.pyc`)
+- Git objects (can be restored from remote)
+
+### Restoration
+To restore from backup:
+```bash
+cd C:\Users\sesa703683\Documents\workspace
+tar -xzf SootblowingDemo_backup_YYYYMMDD_HHMMSS.tar.gz
+cd SootblowingDemoJune2025
+# Recreate virtual environment and reinstall dependencies as needed
+```
+
 ## Current Priorities
 
 ### Immediate Tasks
