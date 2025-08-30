@@ -25,13 +25,13 @@ warnings.filterwarnings('ignore')
 def analyze_operational_performance(data, config):
     """Analyze key operational performance metrics"""
     
-    print("🔧 OPERATIONAL PERFORMANCE ANALYSIS")
+    print("[OPERATIONAL] OPERATIONAL PERFORMANCE ANALYSIS")
     print("=" * 50)
     
     # System efficiency analysis
     if 'system_efficiency' in data.columns:
         efficiency = data['system_efficiency']
-        print(f"\n⚡ System Efficiency:")
+        print(f"\n[EFFICIENCY] System Efficiency:")
         print(f"   Range: {efficiency.min():.1%} to {efficiency.max():.1%}")
         print(f"   Mean: {efficiency.mean():.1%}")
         print(f"   Std Dev: {efficiency.std():.3f}")
@@ -49,7 +49,7 @@ def analyze_operational_performance(data, config):
     # Load factor analysis
     if 'load_factor' in data.columns:
         load_factor = data['load_factor']
-        print(f"\n📊 Load Factor:")
+        print(f"\n[LOAD] Load Factor:")
         print(f"   Range: {load_factor.min():.1%} to {load_factor.max():.1%}")
         print(f"   Mean: {load_factor.mean():.1%}")
         print(f"   Within 60-105%: {((load_factor >= 0.6) & (load_factor <= 1.05)).mean():.1%}")
@@ -57,29 +57,29 @@ def analyze_operational_performance(data, config):
     # Stack temperature analysis
     if 'stack_temp_F' in data.columns:
         stack_temp = data['stack_temp_F']
-        print(f"\n🌡️ Stack Temperature:")
-        print(f"   Range: {stack_temp.min():.1f}°F to {stack_temp.max():.1f}°F")
-        print(f"   Mean: {stack_temp.mean():.1f}°F")
-        print(f"   Std Dev: {stack_temp.std():.1f}°F")
+        print(f"\n[TEMPERATURE] Stack Temperature:")
+        print(f"   Range: {stack_temp.min():.1f}F to {stack_temp.max():.1f}F")
+        print(f"   Mean: {stack_temp.mean():.1f}F")
+        print(f"   Std Dev: {stack_temp.std():.1f}F")
         
         # Temperature increase over time
         initial_temp = data['stack_temp_F'].iloc[:1000].mean()
         final_temp = data['stack_temp_F'].iloc[-1000:].mean()
         temp_increase = final_temp - initial_temp
-        print(f"   Annual increase: {temp_increase:+.1f}°F")
+        print(f"   Annual increase: {temp_increase:+.1f}F")
 
 
 def analyze_soot_blowing_patterns(data):
     """Analyze soot blowing activity and effectiveness"""
     
-    print(f"\n🧹 SOOT BLOWING ANALYSIS")
+    print(f"\n[SOOTBLOW] SOOT BLOWING ANALYSIS")
     print("=" * 50)
     
     # Find soot blowing columns
     soot_cols = [col for col in data.columns if 'soot' in col.lower() and 'blowing' in col.lower()]
     
     if not soot_cols:
-        print("   ❌ No soot blowing columns found")
+        print("   [ERROR] No soot blowing columns found")
         return {}
     
     # Overall soot blowing activity
@@ -87,7 +87,7 @@ def analyze_soot_blowing_patterns(data):
         soot_events = data['soot_blowing_active'].sum()
         soot_frequency = data['soot_blowing_active'].mean()
         
-        print(f"\n🔧 Overall Soot Blowing Activity:")
+        print(f"\n[ACTIVITY] Overall Soot Blowing Activity:")
         print(f"   Total events: {soot_events:,}")
         print(f"   Frequency: {soot_frequency:.1%}")
         print(f"   Hours per cleaning: {1/soot_frequency:.1f} hours" if soot_frequency > 0 else "   No cleaning events")
@@ -95,7 +95,7 @@ def analyze_soot_blowing_patterns(data):
     # Section-specific soot blowing
     section_cols = [col for col in soot_cols if col != 'soot_blowing_active']
     if section_cols:
-        print(f"\n🏭 Section-Specific Soot Blowing:")
+        print(f"\n[SECTIONS] Section-Specific Soot Blowing:")
         for col in section_cols[:10]:  # Show first 10 sections
             events = data[col].sum()
             frequency = data[col].mean()
@@ -107,14 +107,14 @@ def analyze_soot_blowing_patterns(data):
     if 'soot_blowing_active' in data.columns and 'system_efficiency' in data.columns:
         soot_impact = data.groupby('soot_blowing_active')['system_efficiency'].agg(['mean', 'std', 'count'])
         
-        print(f"\n⚡ Efficiency During Soot Blowing:")
+        print(f"\n[EFFICIENCY] Efficiency During Soot Blowing:")
         for active in [False, True]:
             if active in soot_impact.index:
                 status = "During Soot Blowing" if active else "Normal Operation"
                 mean_eff = soot_impact.loc[active, 'mean']
                 std_eff = soot_impact.loc[active, 'std']
                 count = soot_impact.loc[active, 'count']
-                print(f"   • {status}: {mean_eff:.2%} efficiency (±{std_eff:.3f}, n={count})")
+                print(f"   * {status}: {mean_eff:.2%} efficiency (+/-{std_eff:.3f}, n={count})")
         
         # Statistical comparison
         if True in soot_impact.index and False in soot_impact.index:
@@ -123,14 +123,14 @@ def analyze_soot_blowing_patterns(data):
             
             if len(soot_eff) > 0:
                 diff = soot_eff.mean() - normal_eff.mean()
-                print(f"   • Efficiency difference: {diff:+.3f} ({diff/normal_eff.mean():+.1%})")
+                print(f"   * Efficiency difference: {diff:+.3f} ({diff/normal_eff.mean():+.1%})")
     
     # Effectiveness analysis
     if 'avg_cleaning_effectiveness' in data.columns:
         effectiveness = data['avg_cleaning_effectiveness']
         active_effectiveness = effectiveness[effectiveness > 0]
         if len(active_effectiveness) > 0:
-            print(f"\n✨ Cleaning Effectiveness:")
+            print(f"\n[CLEANING] Cleaning Effectiveness:")
             print(f"   Range: {active_effectiveness.min():.1f}% to {active_effectiveness.max():.1f}%")
             print(f"   Mean: {active_effectiveness.mean():.1f}%")
             print(f"   Target (80-95%): {((active_effectiveness >= 80) & (active_effectiveness <= 95)).mean():.1%}")
@@ -145,20 +145,20 @@ def analyze_soot_blowing_patterns(data):
 def analyze_fouling_patterns(data, config):
     """Analyze fouling patterns across boiler sections"""
     
-    print(f"\n🔧 FOULING DYNAMICS ANALYSIS")
+    print(f"\n[FOULING] FOULING DYNAMICS ANALYSIS")
     print("=" * 50)
     
     # Find fouling columns
     fouling_cols = [col for col in data.columns if 'fouling' in col.lower()]
     
     if not fouling_cols:
-        print("   ❌ No fouling columns found")
+        print("   [ERROR] No fouling columns found")
         return {}
     
     print(f"Found {len(fouling_cols)} fouling-related columns")
     
     # Fouling progression analysis
-    print(f"\n📈 FOULING ACCUMULATION PATTERNS:")
+    print(f"\n[PATTERNS] FOULING ACCUMULATION PATTERNS:")
     
     # Sample key time points
     sample_hours = [0, 1000, 2000, 4000, 6000, 8000]
@@ -196,7 +196,7 @@ def analyze_fouling_patterns(data, config):
 def analyze_cleaning_effectiveness(data, config):
     """Analyze cleaning effectiveness and fouling reduction"""
     
-    print(f"\n🧹 CLEANING EFFECTIVENESS VALIDATION")
+    print(f"\n[VALIDATION] CLEANING EFFECTIVENESS VALIDATION")
     print("=" * 50)
     
     fouling_cols = [col for col in data.columns if 'fouling' in col.lower()]
@@ -230,41 +230,41 @@ def analyze_cleaning_effectiveness(data, config):
                         cleaning_effectiveness[section_name] = effectiveness
                         
                         if effectiveness > 80:
-                            status = "✅ Excellent"
+                            status = "[EXCELLENT] Excellent"
                         elif effectiveness > 60:
-                            status = "⚠️ Good"
+                            status = "[GOOD] Good"
                         else:
-                            status = "❌ Poor"
+                            status = "[POOR] Poor"
                         
                         print(f"   {section_name}: {effectiveness:.1f}% fouling reduction {status}")
         
         if cleaning_effectiveness:
             avg_effectiveness = np.mean(list(cleaning_effectiveness.values()))
-            print(f"\n📊 Overall cleaning effectiveness: {avg_effectiveness:.1f}%")
+            print(f"\n[SUMMARY] Overall cleaning effectiveness: {avg_effectiveness:.1f}%")
             
             if avg_effectiveness > 80:
-                print("   ✅ Excellent cleaning performance - maintain current schedule")
+                print("   [EXCELLENT] Excellent cleaning performance - maintain current schedule")
             elif avg_effectiveness > 60:
-                print("   ⚠️ Good cleaning performance - minor optimizations possible")
+                print("   [GOOD] Good cleaning performance - minor optimizations possible")
             else:
-                print("   ❌ Poor cleaning performance - schedule optimization needed")
+                print("   [POOR] Poor cleaning performance - schedule optimization needed")
         
         return cleaning_effectiveness
     else:
-        print("   ❌ Insufficient soot blowing data for effectiveness validation")
+        print("   [ERROR] Insufficient soot blowing data for effectiveness validation")
         return {}
 
 
 def analyze_cleaning_schedule_optimization(data, config):
     """Analyze current cleaning schedules and identify optimization opportunities"""
     
-    print(f"\n📅 CLEANING SCHEDULE OPTIMIZATION ANALYSIS")
+    print(f"\n[SCHEDULE] CLEANING SCHEDULE OPTIMIZATION ANALYSIS")
     print("=" * 50)
     
     fouling_cols = [col for col in data.columns if 'fouling' in col.lower()]
     
     if not fouling_cols:
-        print("   ❌ No fouling data available for schedule analysis")
+        print("   [ERROR] No fouling data available for schedule analysis")
         return {}
     
     optimization_results = {}
@@ -301,18 +301,18 @@ def analyze_cleaning_schedule_optimization(data, config):
                     'optimization_potential': 'Medium' if time_between_cleanings > 168 else 'Low'  # > 7 days
                 }
                 
-                print(f"\n🔧 {section_name}:")
+                print(f"\n[SECTION] {section_name}:")
                 print(f"   Current cleaning frequency: {cleaning_frequency:.1%}")
                 print(f"   Average time between cleanings: {time_between_cleanings:.1f} hours")
                 print(f"   High fouling periods: {high_fouling_periods.sum()} hours")
                 
                 # Optimization recommendations
                 if time_between_cleanings > 168:  # More than 7 days
-                    print(f"   💡 Recommendation: Consider increasing cleaning frequency")
+                    print(f"   [RECOMMENDATION] Consider increasing cleaning frequency")
                 elif time_between_cleanings < 48:  # Less than 2 days
-                    print(f"   💡 Recommendation: Current frequency may be excessive")
+                    print(f"   [RECOMMENDATION] Current frequency may be excessive")
                 else:
-                    print(f"   ✅ Recommendation: Current schedule appears optimal")
+                    print(f"   [OPTIMAL] Recommendation: Current schedule appears optimal")
     
     return optimization_results
 
@@ -320,11 +320,11 @@ def analyze_cleaning_schedule_optimization(data, config):
 def analyze_coal_quality_impact(data):
     """Analyze impact of coal quality on performance and fouling"""
     
-    print(f"\n🏭 COAL QUALITY IMPACT ANALYSIS")
+    print(f"\n[COAL] COAL QUALITY IMPACT ANALYSIS")
     print("=" * 50)
     
     if 'coal_quality' not in data.columns:
-        print("   ❌ No coal quality data available")
+        print("   [ERROR] No coal quality data available")
         return {}
     
     coal_analysis = {}
@@ -352,7 +352,7 @@ def analyze_coal_quality_impact(data):
                         'records': len(subset)
                     }
                     
-                    print(f"\n🔥 {coal_type.title()}:")
+                    print(f"\n[COALTYPE] {coal_type.title()}:")
                     print(f"   Average efficiency: {avg_efficiency:.1%}")
                     print(f"   Average fouling factor: {avg_fouling:.3f}")
                     print(f"   Data records: {len(subset):,}")
@@ -363,11 +363,11 @@ def analyze_coal_quality_impact(data):
 def analyze_seasonal_patterns(data):
     """Analyze seasonal and temporal patterns"""
     
-    print(f"\n🌍 SEASONAL PATTERN ANALYSIS")
+    print(f"\n[SEASONAL] SEASONAL PATTERN ANALYSIS")
     print("=" * 50)
     
     if 'timestamp' not in data.columns:
-        print("   ❌ No timestamp data available")
+        print("   [ERROR] No timestamp data available")
         return {}
     
     # Ensure timestamp is datetime
@@ -386,7 +386,7 @@ def analyze_seasonal_patterns(data):
     if 'system_efficiency' in data.columns:
         seasonal_eff = data.groupby('season')['system_efficiency'].agg(['mean', 'std', 'count'])
         
-        print(f"\n⚡ Seasonal Efficiency Patterns:")
+        print(f"\n[EFFICIENCY] Seasonal Efficiency Patterns:")
         for season in ['Spring', 'Summer', 'Fall', 'Winter']:
             if season in seasonal_eff.index:
                 mean_eff = seasonal_eff.loc[season, 'mean']
@@ -400,7 +400,7 @@ def analyze_seasonal_patterns(data):
     if 'load_factor' in data.columns:
         monthly_load = data.groupby('month')['load_factor'].mean()
         
-        print(f"\n📊 Monthly Load Factor Patterns:")
+        print(f"\n[LOAD] Monthly Load Factor Patterns:")
         for month in range(1, 13):
             if month in monthly_load.index:
                 load = monthly_load[month]
@@ -415,7 +415,7 @@ def analyze_seasonal_patterns(data):
 def create_comprehensive_visualizations(data, config):
     """Create comprehensive visualization dashboard"""
     
-    print(f"\n📈 GENERATING COMPREHENSIVE VISUALIZATIONS")
+    print(f"\n[VISUALIZATION] GENERATING COMPREHENSIVE VISUALIZATIONS")
     print("=" * 50)
     
     # Create dashboard with multiple subplots
@@ -484,7 +484,7 @@ def create_comprehensive_visualizations(data, config):
                 color='red', alpha=0.7, linewidth=1)
         ax6.set_title('Stack Temperature Over Time')
         ax6.set_xlabel('Hours')
-        ax6.set_ylabel('Stack Temperature (°F)')
+        ax6.set_ylabel('Stack Temperature (F)')
         ax6.grid(True, alpha=0.3)
     
     # Plot 7: Coal quality impact
@@ -530,7 +530,7 @@ def create_comprehensive_visualizations(data, config):
     plt.tight_layout()
     plt.show()
     
-    print("✅ Comprehensive visualization dashboard generated")
+    print("[SUCCESS] Comprehensive visualization dashboard generated")
     
     return fig
 
@@ -545,7 +545,7 @@ def run_comprehensive_analysis(data, config=None):
             'cleaning_effectiveness_target': 80
         }
     
-    print("🚀 COMPREHENSIVE BOILER ANALYSIS SUITE")
+    print("[ANALYSIS] COMPREHENSIVE BOILER ANALYSIS SUITE")
     print("=" * 60)
     print(f"Dataset: {len(data)} records, {len(data.columns)} features")
     print()
@@ -578,7 +578,7 @@ def run_comprehensive_analysis(data, config=None):
     results['visualizations'] = create_comprehensive_visualizations(data, config)
     
     print("\n" + "=" * 60)
-    print("✅ COMPREHENSIVE ANALYSIS COMPLETE")
+    print("[SUCCESS] COMPREHENSIVE ANALYSIS COMPLETE")
     print("=" * 60)
     
     return results
@@ -587,7 +587,7 @@ def run_comprehensive_analysis(data, config=None):
 def generate_optimization_recommendations(analysis_results, data):
     """Generate actionable optimization recommendations"""
     
-    print("\n💡 OPTIMIZATION RECOMMENDATIONS")
+    print("\n[RECOMMENDATIONS] OPTIMIZATION RECOMMENDATIONS")
     print("=" * 50)
     
     recommendations = []
@@ -596,21 +596,21 @@ def generate_optimization_recommendations(analysis_results, data):
     if 'soot_blowing' in analysis_results:
         soot_freq = analysis_results['soot_blowing'].get('soot_frequency', 0)
         if soot_freq < 0.02:  # Less than 2%
-            recommendations.append("⚠️ Low soot blowing frequency - consider increasing cleaning schedule")
+            recommendations.append("[WARNING] Low soot blowing frequency - consider increasing cleaning schedule")
         elif soot_freq > 0.10:  # More than 10%
-            recommendations.append("⚠️ High soot blowing frequency - investigate root causes of fouling")
+            recommendations.append("[WARNING] High soot blowing frequency - investigate root causes of fouling")
         else:
-            recommendations.append("✅ Optimal soot blowing frequency - maintain current schedule")
+            recommendations.append("[OPTIMAL] Optimal soot blowing frequency - maintain current schedule")
     
     # Efficiency optimization
     if 'system_efficiency' in data.columns:
         avg_eff = data['system_efficiency'].mean()
         if avg_eff < 0.80:
-            recommendations.append("❌ Low efficiency - urgent optimization needed")
+            recommendations.append("[CRITICAL] Low efficiency - urgent optimization needed")
         elif avg_eff < 0.85:
-            recommendations.append("⚠️ Good efficiency - optimization opportunities exist")
+            recommendations.append("[WARNING] Good efficiency - optimization opportunities exist")
         else:
-            recommendations.append("✅ Excellent efficiency - maintain current operations")
+            recommendations.append("[EXCELLENT] Excellent efficiency - maintain current operations")
     
     # Cleaning effectiveness
     if 'cleaning_effectiveness' in analysis_results:
@@ -618,13 +618,13 @@ def generate_optimization_recommendations(analysis_results, data):
         if effectiveness:
             avg_effectiveness = np.mean(list(effectiveness.values()))
             if avg_effectiveness < 60:
-                recommendations.append("❌ Poor cleaning effectiveness - review cleaning procedures")
+                recommendations.append("[CRITICAL] Poor cleaning effectiveness - review cleaning procedures")
             elif avg_effectiveness < 80:
-                recommendations.append("⚠️ Moderate cleaning effectiveness - fine-tune cleaning schedule")
+                recommendations.append("[WARNING] Moderate cleaning effectiveness - fine-tune cleaning schedule")
             else:
-                recommendations.append("✅ Excellent cleaning effectiveness - maintain current approach")
+                recommendations.append("[EXCELLENT] Excellent cleaning effectiveness - maintain current approach")
     
-    print("\n📋 ACTIONABLE RECOMMENDATIONS:")
+    print("\n[ACTIONABLE] ACTIONABLE RECOMMENDATIONS:")
     for i, rec in enumerate(recommendations, 1):
         print(f"   {i}. {rec}")
     

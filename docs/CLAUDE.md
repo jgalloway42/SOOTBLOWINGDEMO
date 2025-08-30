@@ -1,0 +1,116 @@
+# Soot Blowing Optimization Demo - Claude Code Configuration
+
+## Project Overview
+Industrial boiler soot blowing optimization system using physics-based simulation and machine learning. Focuses on optimizing cleaning schedules to maximize efficiency while minimizing operational costs.
+
+## Key Project Information
+
+### Current Status
+- **Phase**: Development & Demo Preparation  
+- **Focus**: Soot blowing optimization for industrial boilers
+- **Dataset**: Physics-corrected annual simulation (8,784 records)
+- **Ready For**: LSTM model training and optimization algorithms
+
+### Main Directories
+```
+├── src/
+│   ├── models/complete_boiler_simulation/    # Core simulation engine
+│   │   ├── simulation/                       # Boiler physics simulation
+│   │   └── analysis/                        # EDA and optimization analysis
+│   └── data_generation/                     # Dataset generation scripts
+├── notebooks/                               # Jupyter analysis notebooks
+│   ├── 2.4-*-eda-validated-simulation.ipynb # Comprehensive EDA (FIXED)
+│   └── 2.5-*-physics-corrected-sim-eda.ipynb # Physics validation
+├── data/generated/annual_datasets/          # Simulation datasets
+└── outputs/                                # Analysis reports and metadata
+```
+
+### Key Files
+- `annual_boiler_simulator.py` - Main simulation engine with physics corrections
+- `boiler_eda_analysis.py` - Comprehensive analysis functions (Windows-compatible)
+- `massachusetts_boiler_annual_20250829_132638.csv` - Latest physics-corrected dataset
+
+## Technical Context
+
+### Recent Major Work
+1. **Physics Corrections Applied** (CRITICAL):
+   - Fixed efficiency-fouling correlation (now negative as expected)
+   - Implemented time-based fouling accumulation (time since last cleaning)
+   - Added CEMS stack temperature correlations with fouling
+   - Resolved API compatibility issues
+
+2. **Analysis Infrastructure**:
+   - Comprehensive soot blowing effectiveness analysis
+   - Cleaning schedule optimization algorithms
+   - Industrial-grade visualization dashboards
+   - Refactored code into reusable modules
+
+3. **Windows Compatibility Fixes**:
+   - Replaced Unicode emojis with ASCII-safe alternatives
+   - Fixed AttributeError in outlier detection (simplified for simulated data)
+   - All analysis functions now run without encoding errors
+
+### Dataset Validation Results
+- **Time-fouling correlation**: +0.974 (excellent)
+- **Efficiency-fouling correlation**: -0.664 (excellent) 
+- **Load factor compliance**: 100% within 60-105%
+- **Parameter variation**: Only 3 constant columns
+- **Commercial readiness**: READY FOR DEPLOYMENT
+
+### Commands to Run
+```bash
+# Test analysis functions
+python -c "from src.models.complete_boiler_simulation.analysis.boiler_eda_analysis import run_comprehensive_analysis"
+
+# Run latest dataset analysis
+jupyter notebook notebooks/2.5-jdg-boiler-fouling-dataset-physics-corrected-sim-eda.ipynb
+
+# Generate new simulation dataset
+python src/data_generation/run_annual_simulation.py
+```
+
+## Current Priorities
+
+### Immediate Tasks
+- LSTM model development for predictive fouling
+- Real-time optimization algorithm implementation
+- Cost-benefit analysis integration
+- Pilot deployment preparation
+
+### Demo Requirements
+- Comprehensive soot blowing analysis ✅
+- Physics-realistic simulation ✅
+- Industrial-grade visualization ✅ 
+- Commercial viability assessment ✅
+
+## Important Notes
+
+### For Claude Code Sessions
+- **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
+- **Use latest dataset**: `massachusetts_boiler_annual_20250829_132638.csv`
+- **Windows compatibility**: All Unicode issues resolved, use ASCII output
+- **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead
+- **Model preference**: Use Claude Sonnet 3.7 when available
+- **Simulation validation**: Physics corrections confirmed working
+
+### Common Issues Fixed
+- ❌ AttributeError in outlier detection → ✅ Simplified for simulated data
+- ❌ Unicode encoding on Windows → ✅ ASCII-safe bracket notation
+- ❌ Positive efficiency-fouling correlation → ✅ Negative correlation (-0.664)
+- ❌ API compatibility → ✅ Fixed parameter extraction
+
+### Business Context
+- **Industry**: Power generation / Industrial boilers
+- **Goal**: Optimize soot blowing schedules for maximum efficiency
+- **Savings Potential**: 2-5% efficiency improvement through optimized cleaning
+- **Timeline**: Ready for commercial deployment
+
+## Lint/Build Commands
+```bash
+# No specific lint commands configured yet
+# To add: python -m flake8 src/ or similar
+```
+
+---
+**Last Updated**: 2025-08-30  
+**Status**: Physics corrections complete, analysis infrastructure ready, demo-ready dataset validated
