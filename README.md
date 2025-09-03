@@ -1,7 +1,45 @@
-# Project Title
+# Soot Blowing Optimization Demo
 
 ## Abstract
 
+Industrial boiler soot blowing optimization system using physics-based simulation and machine learning. Focuses on optimizing cleaning schedules to maximize efficiency while minimizing operational costs.
+
+**Current Status**: ❌ **Early Development Phase** - Critical simulation architecture issues require fixing before proceeding.
+
+## Current System Status (Updated 2025-09-03)
+
+### ⚠️ **Partially Working**
+- **Basic Simulation**: Runs without crashing, generates data files
+- **Analysis Tools**: EDA functions work but analyze broken simulation data
+- **File Structure**: Proper organization and data output paths
+- **Coal Combustion**: Physics calculations appear to work correctly
+
+### ❌ **Critical Issues Identified**
+
+#### Broken Effectiveness Calculation
+- **Issue**: Effectiveness parameters are completely non-functional - don't affect fouling reduction at all
+- **Root Cause**: Architecture assumes `boiler.sections[].apply_cleaning()` objects that don't exist
+- **Impact**: Generated datasets are NOT realistic and cannot be used for optimization
+- **Status**: ❌ **Major architectural fix required**
+
+#### What This Means
+- **No Valid Dataset**: Current simulation outputs are not realistic
+- **No Optimization Possible**: Cannot build optimizer without realistic fouling data
+- **No Demo Ready**: System fundamentally broken for intended purpose
+
+### ❌ **NOT Ready - Major Work Required**
+1. **Fix simulation architecture** - Make effectiveness parameters functional
+2. **Generate realistic dataset** - With working fouling/cleaning physics  
+3. **Build optimization model** - For real-time soot blowing recommendations
+4. **Create demo interface** - To show optimization in action
+5. **Validate against industry data** - Ensure realistic behavior
+
+### 🎯 **Project Goal (Not Yet Achieved)**
+Build a working soot blowing optimization system that can:
+- Generate realistic fouling datasets from physics-based simulation
+- Train ML models to predict fouling buildup
+- Provide real-time optimization recommendations for cleaning schedules
+- Demonstrate measurable efficiency improvements
 
 ## Dataset
 

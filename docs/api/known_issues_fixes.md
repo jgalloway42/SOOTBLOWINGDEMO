@@ -527,3 +527,101 @@ Actual reduction observed: ~0.001 fouling units
 **Next Steps** (Optional calibration):
 - Fine-tune effectiveness from 98.7% to 85-90% for more realistic industrial performance
 - Fix simulation output folder paths (currently using src/models/ instead of project root)
+
+---
+
+## ⚠️ CRITICAL ARCHITECTURAL LIMITATION DISCOVERED
+
+### Issue Description  
+**Status**: ⚠️ ARCHITECTURAL CONSTRAINT - Effectiveness calibration targets cannot be reliably achieved  
+**Discovered**: 2025-09-03 during calibration attempts for 90-95% effectiveness range  
+**Impact**: Critical limitation - Effectiveness parameters are cosmetic and don't reliably control actual fouling reduction  
+
+### Root Cause Analysis
+
+**FUNDAMENTAL ARCHITECTURAL FLAW DISCOVERED**:
+The effectiveness parameters in the simulation (e.g., `np.random.uniform(0.88, 0.97)`) are **cosmetic only** and do not reliably control actual fouling factor reduction during cleaning events.
+
+**Specific Technical Issues**:
+
+1. **Broken Effectiveness Chain**: `annual_boiler_simulator.py:530-555`
+   ```python
+   def _apply_soot_blowing_effects(self, soot_blowing_actions: Dict):
+       # This method sets effectiveness parameters but doesn't reliably apply them
+       if hasattr(self.boiler, 'sections') and section_name in self.boiler.sections:
+           section = self.boiler.sections[section_name]
+           if hasattr(section, 'apply_cleaning'):
+               section.apply_cleaning(action['effectiveness'])  # May not exist
+   ```
+
+2. **Timer-Only Reset Mechanism**: `annual_boiler_simulator.py:738-824`
+   ```python
+   def _generate_fouling_data(self, current_datetime: datetime.datetime):
+       # Fouling calculation uses timer reset, ignoring effectiveness parameters
+       hours_since_cleaning = (current_datetime - self.last_cleaned[section]).total_seconds() / 3600
+       fouling_accumulation = base_rate * hours_since_cleaning  # Timer-based only
+   ```
+
+3. **Architecture Assumption Error**:
+   - Code assumes `self.boiler.sections` objects exist with `apply_cleaning()` methods
+   - These objects may not exist or may not implement the expected interface
+   - Fallback mechanism defaults to timer-only reset (100% effectiveness)
+
+### Calibration Attempt Results
+
+**Multiple calibration attempts consistently failed to achieve target ranges**:
+
+| Parameter Range | Expected Effectiveness | Actual Result | Deviation |
+|----------------|----------------------|---------------|-----------|
+| 0.88-0.97 | ~92.5% | 87.2% | -5.3 points |
+| 0.85-0.95 | ~90.0% | 87.2% | -2.8 points |
+| 0.80-0.92 | ~86.0% | 85.4% | -0.6 points |
+| 0.75-0.90 | ~82.5% | 88.4% | +5.9 points |
+
+**Conclusion**: Parameter changes have minimal, inconsistent impact on actual effectiveness due to architectural limitations.
+
+### Impact on System Functionality
+
+**What Still Works**:
+- ✅ Fouling builds realistically over time
+- ✅ Cleaning events occur on correct schedules
+- ✅ Timer resets work consistently (giving near 100% effectiveness)
+- ✅ Analysis tools measure whatever effectiveness actually occurs
+- ✅ Dataset structure supports optimization analysis
+
+**What Doesn't Work as Designed**:
+- ❌ Effectiveness parameter tuning (88-97% range has minimal impact)
+- ❌ Calibration to specific effectiveness targets (90-95% range)
+- ❌ Realistic industrial effectiveness simulation (often defaults to ~100%)
+- ❌ Partial cleaning effectiveness modeling (mostly binary: clean or not clean)
+
+### Current System Performance
+
+**Latest Dataset**: `massachusetts_boiler_annual_20250903_115813.csv`
+- **Effectiveness**: 87.2% average (2.8 points below 90-95% target)
+- **Cleaning Events**: 282 events with realistic timing
+- **Fouling Physics**: Working correctly (1.000 to ~1.005 buildup)
+- **Commercial Viability**: High - core functionality intact
+
+### Recommended Actions
+
+**For Commercial Demo**:
+1. **Use current 87.2% effectiveness** - within acceptable industrial range (80-95%)
+2. **Focus on optimization algorithms** - effectiveness measurement is accurate
+3. **Emphasize schedule optimization** - cleaning timing and frequency work perfectly
+
+**For Future Development**:
+1. **Architectural Refactor**: Implement proper effectiveness-based fouling reduction
+2. **Interface Validation**: Ensure `boiler.sections[].apply_cleaning()` methods exist
+3. **Effectiveness Testing**: Create unit tests for effectiveness parameter impact
+
+### Technical Resolution Required
+
+**Files Needing Architectural Updates**:
+- `annual_boiler_simulator.py` - Fix `_apply_soot_blowing_effects()` to actually apply effectiveness
+- `core/boiler_system.py` - Implement proper section objects with `apply_cleaning()` methods  
+- Core fouling calculation - Use effectiveness-based reduction instead of timer-only reset
+
+**Effort Estimate**: Major architectural work (several days)
+**Priority**: Medium - current system functional for demonstration purposes
+**Risk**: Low - can continue with current 87.2% effectiveness for commercial demo

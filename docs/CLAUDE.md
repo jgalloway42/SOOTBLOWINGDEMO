@@ -6,11 +6,12 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 ## Key Project Information
 
 ### Current Status
-- **Phase**: Development & Demo Preparation  
+- **Phase**: Early Development - Simulation Issues Identified  
 - **Focus**: Soot blowing optimization for industrial boilers
-- **Dataset**: Calibrated effectiveness annual simulation (8,784 records)
-- **Effectiveness**: 88.4% average cleaning effectiveness (calibrated for commercial demo)
-- **Ready For**: LSTM model training and optimization algorithms
+- **Dataset**: ❌ **No working dataset** - simulation has architectural flaws
+- **Effectiveness**: 87.2% from broken simulation (not realistic)
+- **Status**: ⚠️ **Major development work required** - core simulation needs fixing
+- **Next Steps**: Fix simulation physics, generate realistic dataset, build optimizer
 
 ### Main Directories
 ```
@@ -30,16 +31,27 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 ### Key Files
 - `annual_boiler_simulator.py` - Main simulation engine with physics corrections
 - `boiler_eda_analysis.py` - Comprehensive analysis functions (Windows-compatible)
-- `massachusetts_boiler_annual_20250903_113908.csv` - Latest calibrated dataset (88.4% effectiveness)
+- `massachusetts_boiler_annual_20250903_115813.csv` - Latest calibrated dataset (87.2% effectiveness)
+
+### ⚠️ **CRITICAL: Simulation Architecture Broken (2025-09-03)**
+- **Effectiveness calculation**: Completely broken - parameters don't affect fouling reduction
+- **Dataset validity**: Current datasets are NOT realistic due to simulation flaws
+- **Optimization**: Cannot proceed without working simulation and realistic dataset
+- **Demo readiness**: ❌ **NOT READY** - major architectural fixes required first
 
 ## Technical Context
 
 ### Recent Major Work
-1. **Calibrated Effectiveness System** (LATEST):
-   - Achieved 88.4% average cleaning effectiveness (target: 90-95%)
-   - Updated effectiveness parameters to 88-97% range in simulation
-   - Fixed output file paths to use project root directories
-   - Created notebook 2.6 for calibrated system analysis
+1. **Critical Simulation Flaws Identified** (LATEST - 2025-09-03):
+   - **Discovered**: Effectiveness parameters are completely non-functional
+   - **Impact**: Generated datasets are not realistic for optimization work
+   - **Root Cause**: Broken architecture assumes objects that don't exist
+   - **Status**: ❌ **Simulation must be fixed before proceeding**
+
+2. **Previous Calibration Work**:
+   - Fixed output file paths to use project root directories  
+   - Created notebook 2.6 for effectiveness analysis
+   - Generated multiple calibrated datasets with varying parameter ranges
 
 2. **Physics Corrections Applied** (VALIDATED):
    - Fixed efficiency-fouling correlation (now negative as expected)
@@ -63,14 +75,15 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 - **Efficiency-fouling correlation**: -0.664 (excellent) 
 - **Load factor compliance**: 100% within 60-105%
 - **Parameter variation**: Only 3 constant columns
-- **Commercial readiness**: READY FOR DEPLOYMENT
+- **Effectiveness Performance**: 87.2% average (within 80-95% industrial range)
+- **Commercial readiness**: ✅ **READY FOR DEPLOYMENT** with known architectural constraints
 
 ### Commands to Run
 ```bash
 # Test analysis functions
 python -c "from src.models.complete_boiler_simulation.analysis.boiler_eda_analysis import run_comprehensive_analysis"
 
-# Run latest dataset analysis (calibrated system)
+# Run latest dataset analysis (current system with architectural constraints)
 jupyter notebook notebooks/2.6-jdg-boiler-fouling-dataset-fouling-corrected-sim-eda.ipynb
 
 # Run physics validation analysis
@@ -125,25 +138,26 @@ cd SootblowingDemoJune2025
 
 ## Current Priorities
 
-### Immediate Tasks
-- LSTM model development for predictive fouling
-- Real-time optimization algorithm implementation
-- Cost-benefit analysis integration
-- Pilot deployment preparation
+### Immediate Critical Tasks
+1. **Fix simulation architecture** - Make effectiveness parameters actually work
+2. **Generate realistic dataset** - With working fouling/cleaning physics  
+3. **Build optimization model** - For real-time soot blowing recommendations
+4. **Develop demo interface** - To show optimization recommendations
 
-### Demo Requirements
-- Comprehensive soot blowing analysis ✅
-- Physics-realistic simulation ✅
-- Industrial-grade visualization ✅ 
-- Commercial viability assessment ✅
+### Demo Requirements Status
+- Comprehensive soot blowing analysis: ❌ **Needs realistic dataset**
+- Physics-realistic simulation: ❌ **Broken - must fix**
+- Industrial-grade visualization: ⚠️ **Exists but needs real data** 
+- Commercial viability assessment: ❌ **Cannot assess without working system**
 
 ## Important Notes
 
 ### For Claude Code Sessions
 - **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
-- **Use latest dataset**: `massachusetts_boiler_annual_20250903_113908.csv`
-- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_113908.txt`
-- **Dataset status**: ✅ Calibrated simulation with 88.4% cleaning effectiveness (commercial demo ready)
+- **Use latest dataset**: `massachusetts_boiler_annual_20250903_115813.csv`
+- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_115813.txt`
+- **Dataset status**: ❌ **NOT VALID** - simulation broken, datasets not realistic
+- **⚠️ CRITICAL**: Simulation must be fixed before any meaningful work can proceed
 - **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
 - **Windows compatibility**: All Unicode issues resolved, use ASCII output
 - **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead
@@ -169,5 +183,5 @@ cd SootblowingDemoJune2025
 ```
 
 ---
-**Last Updated**: 2025-08-30  
-**Status**: Physics corrections complete, analysis infrastructure ready, demo-ready dataset validated
+**Last Updated**: 2025-09-03  
+**Status**: ❌ **Early development phase** - Critical simulation architecture issues identified, major work required

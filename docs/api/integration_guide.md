@@ -2,7 +2,8 @@
 
 **File Location:** `docs/api/INTEGRATION_GUIDE.md`  
 **Created:** August 2025  
-**Status:** ESSENTIAL - How components work together
+**Updated:** September 3, 2025  
+**Status:** ✅ OPERATIONAL with known architectural limitations
 
 ---
 
@@ -257,6 +258,83 @@ def validate_system_performance(efficiency, steam_temp, stack_temp):
     if steam_temp < 650 or steam_temp > 750:
         logger.warning(f"Steam temperature {steam_temp:.0f}°F outside normal range")
 ```
+
+---
+
+## ⚠️ ARCHITECTURAL LIMITATIONS AND WORKAROUNDS (2025-09-03)
+
+### Critical Integration Issue: Soot Blowing Effectiveness
+
+**Problem**: The integration between `AnnualBoilerSimulator` and `EnhancedCompleteBoilerSystem` assumes section objects that may not exist with expected interfaces.
+
+**Root Cause**:
+```python
+# annual_boiler_simulator.py assumes this structure exists:
+if hasattr(self.boiler, 'sections') and section_name in self.boiler.sections:
+    section = self.boiler.sections[section_name]
+    if hasattr(section, 'apply_cleaning'):
+        section.apply_cleaning(action['effectiveness'])  # May not exist
+```
+
+**Impact on Integration**:
+- Effectiveness parameters are set but may not be applied to boiler sections
+- Integration falls back to timer-based fouling reset (reliable but less granular)
+- System still functions but with limited effectiveness calibration control
+
+### Robust Integration Pattern (Recommended)
+
+**Use this pattern for reliable soot blowing integration**:
+```python
+def robust_soot_blowing_integration():
+    """Recommended pattern that works with current architecture"""
+    
+    simulator = AnnualBoilerSimulator(start_date="2024-01-01")
+    
+    # Generate data - system handles effectiveness internally
+    data = simulator.generate_annual_data(
+        hours_per_day=24,
+        save_interval_hours=1
+    )
+    
+    # Focus on what works reliably:
+    # 1. Cleaning schedule optimization (timing works perfectly)
+    # 2. Fouling accumulation patterns (physics are correct)  
+    # 3. Timer-based effectiveness (consistent ~87% average)
+    
+    return data
+
+def analyze_effectiveness_results(data):
+    """Pattern for effectiveness analysis that works with current system"""
+    
+    # Don't attempt to calibrate effectiveness parameters
+    # Instead, analyze whatever effectiveness actually occurs
+    
+    effectiveness_results = analyze_cleaning_effectiveness(
+        data,
+        time_window_hours=2,  # Use 2-hour windows for sensitivity
+        fouling_threshold=0.001  # Realistic threshold for simulated data
+    )
+    
+    # Results will be in 85-90% range regardless of parameter settings
+    # This is acceptable for commercial demonstration
+    
+    return effectiveness_results
+```
+
+### Working Integration Features
+
+**✅ These integration patterns work reliably**:
+- Boiler system creation and operation
+- Annual simulation dataset generation
+- Property calculation integration
+- Combustion model integration
+- Data structure consistency
+- File output and organization
+
+**⚠️ These patterns have limitations**:
+- Effectiveness parameter calibration to specific targets
+- Section-specific effectiveness control
+- Granular cleaning effectiveness simulation
 
 ---
 

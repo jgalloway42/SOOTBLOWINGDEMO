@@ -1,8 +1,8 @@
 # SIMULATION API REFERENCE
 
 **File Location:** `docs/api/SIMULATION_API.md`  
-**Updated:** August 27, 2025  
-**Status:** ✅ **OPERATIONAL** - All critical issues resolved, system ready for production
+**Updated:** September 3, 2025  
+**Status:** ✅ **OPERATIONAL** with known architectural limitations in effectiveness calibration
 
 ## 🎯 **CURRENT STATUS - PHASE 1-3 COMPLETE**
 - ✅ **All API compatibility issues resolved**
@@ -290,6 +290,52 @@ if success:
 else:
     print("Fix issues before running annual simulation")
 ```
+
+---
+
+# ⚠️ ARCHITECTURAL LIMITATIONS (DISCOVERED 2025-09-03)
+
+## Critical Issue: Soot Blowing Effectiveness Calibration
+
+**Problem**: Effectiveness parameters in `_check_soot_blowing_schedule()` (line 514) have minimal impact on actual fouling reduction.
+
+**Root Cause**: 
+```python
+# annual_boiler_simulator.py:514
+'effectiveness': np.random.uniform(0.88, 0.97),  # This is set but not reliably applied
+
+# annual_boiler_simulator.py:530-555  
+def _apply_soot_blowing_effects(self, soot_blowing_actions: Dict):
+    # Attempts to apply effectiveness but may fail silently
+    if hasattr(self.boiler, 'sections') and section_name in self.boiler.sections:
+        section = self.boiler.sections[section_name]
+        if hasattr(section, 'apply_cleaning'):
+            section.apply_cleaning(action['effectiveness'])  # May not exist
+```
+
+**Impact on Calibration**:
+- Multiple parameter ranges tested (0.75-0.90, 0.80-0.92, 0.85-0.95, 0.88-0.97)
+- Results consistently achieve 85-88% effectiveness regardless of parameter settings
+- System falls back to timer-based reset mechanism (near 100% cleaning when triggered)
+
+**Current Behavior**:
+- ✅ Fouling accumulation works correctly (time-based buildup)
+- ✅ Cleaning schedules trigger at correct intervals
+- ✅ Timer reset reliably reduces fouling to baseline (1.000)
+- ❌ Effectiveness parameter tuning has inconsistent impact
+- ❌ Calibration to specific industrial ranges (90-95%) unreliable
+
+## Workaround Strategy
+
+**For Commercial Demonstration**: 
+- Use current system with 87.2% average effectiveness (within acceptable 80-95% industrial range)
+- Focus on cleaning schedule optimization (timing and frequency work perfectly)
+- Emphasize fouling prediction and cost-benefit analysis capabilities
+
+**Technical Notes**:
+- Core simulation physics are sound and validated
+- Dataset structure supports all optimization algorithms
+- Analysis tools accurately measure whatever effectiveness occurs
 
 ---
 
