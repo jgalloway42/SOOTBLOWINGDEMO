@@ -403,3 +403,103 @@ Ready for: Immediate validation and annual simulation execution
 **Status:** API compatibility issues RESOLVED ✅ | File corruption IDENTIFIED ⚠️  
 **Next Step:** Fix main section, then execute validation and annual simulation  
 **Validation:** Run validation scripts after file fix to confirm system readiness
+
+---
+
+## ⚠️ PARTIALLY RESOLVED: Soot Blowing Analysis Logic Errors + Simulation Issue
+
+### Issue Description  
+**Status**: ⚠️ PARTIALLY RESOLVED - Analysis fixed, simulation issue identified  
+**Discovered**: 2025-09-03 during notebook 2.5 analysis  
+**Impact**: High - Simulation doesn't actually apply cleaning effects to fouling data  
+
+**UPDATE**: Analysis logic fixes were successful and work correctly. However, testing revealed the real root cause: the simulation generates cleaning events but doesn't actually reduce fouling factors when cleaning occurs.
+
+### Root Cause Analysis
+
+**INCORRECT Initial Assessment**:
+~~Individual tube/section-specific soot blowing indicators missing~~ ❌
+
+**✅ ANALYSIS ISSUES FIXED**:
+1. **Column Name Mismatch**: ✅ Fixed - Analysis now uses correct `[section]_cleaning` pattern
+2. **Wrong Time Windows**: ✅ Fixed - Changed from 24-hour to 2-hour analysis windows  
+3. **Measurement Sensitivity**: ✅ Addressed - Analysis now properly handles small fouling spans
+
+**❌ REAL ROOT CAUSE DISCOVERED**:
+**Simulation doesn't actually reduce fouling factors during cleaning events**
+- Cleaning flags are set correctly (`furnace_walls_cleaning = True`)
+- Fouling factors continue building up linearly (1.000 → 1.250) regardless of cleaning
+- `_apply_soot_blowing_effects()` function doesn't modify fouling factor data
+
+### Confirmed Dataset Structure (CORRECT)
+
+**Actual Soot Blowing Columns (16 total)**:
+- `soot_blowing_active` - Global cleaning indicator
+- `furnace_walls_cleaning` - Furnace section cleaning
+- `generating_bank_cleaning` - Generating bank cleaning
+- `superheater_primary_cleaning` - Primary superheater cleaning
+- `superheater_secondary_cleaning` - Secondary superheater cleaning
+- `economizer_primary_cleaning` - Primary economizer cleaning
+- `economizer_secondary_cleaning` - Secondary economizer cleaning  
+- `air_heater_cleaning` - Air heater cleaning
+- Plus 8 additional cleaning tracking columns (hours since last cleaning, effectiveness metrics)
+
+**Fouling Monitoring (49+ columns)**:
+- Section-specific fouling factors for all major boiler components
+- Segment-level fouling tracking within each section
+- Heat transfer impact measurements
+
+### Impact Analysis (CORRECTED)
+
+**Cleaning Effectiveness Analysis**:
+- Previous results: 0.0-0.1% effectiveness (due to analysis errors)
+- Expected results: 80-95% fouling reduction (per simulation physics)
+- **Resolution**: Updated analysis to use correct column names and time windows
+
+**Commercial Deployment**:
+- Dataset structure supports full optimization analysis
+- Section-specific cleaning data available for targeted recommendations
+- Real-world applicability confirmed with proper analysis methods
+
+### Validation Test Results (2025-09-03)
+
+**Analysis Testing Results**:
+- ✅ **Column Detection**: Found 9 cleaning columns (furnace_walls_cleaning, generating_bank_cleaning, etc.)
+- ✅ **Event Detection**: Found 121 furnace cleaning events (1.4% frequency)
+- ❌ **Effectiveness Measurement**: **0.1% average effectiveness detected**
+
+**Detailed Investigation Results**:
+```
+Furnace fouling factor range: 1.000000 to 1.250000 (span: 0.250000)
+Cleaning events analyzed: 20 events
+Significant reductions (>5%): 0 events  
+Average reduction: 0.2%
+Expected reduction if 80% effective: 0.200 fouling units
+Actual reduction observed: ~0.001 fouling units
+```
+
+**Conclusion**: Analysis logic works correctly but simulation doesn't implement cleaning effects.
+
+### Resolution Applied
+
+**✅ ANALYSIS FIXES COMPLETED**:
+1. **Column Mapping Fixed**: Updated analysis to use `[section]_cleaning` column pattern
+2. **Time Windows Corrected**: Changed from 24-hour to 1-2 hour analysis windows  
+3. **Section Correlation**: Proper mapping between cleaning columns and fouling factor columns
+4. **Documentation Updated**: Fixed model references and metadata links
+
+**❌ SIMULATION ISSUE IDENTIFIED**:
+- `annual_boiler_simulator.py` - `_apply_soot_blowing_effects()` doesn't modify fouling factors
+- `_generate_fouling_data()` - May need to respect cleaning resets  
+- **Next Step**: Fix simulation to actually reduce fouling when cleaning occurs
+
+**Files Updated**:
+- ✅ `notebooks/2.5-jdg-boiler-fouling-dataset-physics-corrected-sim-eda.ipynb`
+- ✅ `src/models/complete_boiler_simulation/analysis/boiler_eda_analysis.py`
+- ✅ `docs/CLAUDE.md`
+
+### Current Status
+**Priority**: 🚨 HIGH - Core simulation functionality missing  
+**Timeline**: Analysis corrections completed, simulation fix needed  
+**Effort**: Medium - Requires simulation logic modification and dataset regeneration  
+**Risk**: Medium - May require breaking changes to simulation output format

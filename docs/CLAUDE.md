@@ -131,9 +131,11 @@ cd SootblowingDemoJune2025
 ### For Claude Code Sessions
 - **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
 - **Use latest dataset**: `massachusetts_boiler_annual_20250829_132638.csv`
+- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250829_132638.txt`
+- **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
 - **Windows compatibility**: All Unicode issues resolved, use ASCII output
 - **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead
-- **Model preference**: Use Claude Sonnet 3.7 when available
+- **Model preference**: Use Claude Sonnet 4 as default (current model)
 - **Simulation validation**: Physics corrections confirmed working
 
 ### Common Issues Fixed

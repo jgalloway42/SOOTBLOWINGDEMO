@@ -194,49 +194,90 @@ def analyze_fouling_patterns(data, config):
 
 
 def analyze_cleaning_effectiveness(data, config):
-    """Analyze cleaning effectiveness and fouling reduction"""
+    """Analyze cleaning effectiveness and fouling reduction - FIXED VERSION"""
     
     print(f"\n[VALIDATION] CLEANING EFFECTIVENESS VALIDATION")
     print("=" * 50)
     
     fouling_cols = [col for col in data.columns if 'fouling' in col.lower()]
+    # FIXED: Look for actual cleaning columns (use _cleaning pattern)
+    cleaning_cols = [col for col in data.columns if 'cleaning' in col.lower() and col != 'soot_blowing_active']
     
-    if 'soot_blowing_active' in data.columns and fouling_cols:
+    if fouling_cols and (cleaning_cols or 'soot_blowing_active' in data.columns):
         cleaning_effectiveness = {}
+        
+        print(f"   [DATA] Found {len(fouling_cols)} fouling columns and {len(cleaning_cols)} cleaning columns")
         
         # Analyze fouling before and after cleaning events
         for fouling_col in fouling_cols[:3]:  # First 3 sections for analysis
-            section_name = fouling_col.replace('_fouling_factor', '').replace('_', ' ').title()
-            section_cleaning_col = f"{fouling_col.replace('_fouling_factor', '')}_soot_blowing_active"
+            section_name = fouling_col.replace('_fouling_factor', '').replace('_fouling', '').replace('_', ' ').title()
             
-            if section_cleaning_col in data.columns:
+            # FIXED: Find corresponding cleaning column using correct pattern
+            section_cleaning_col = None
+            potential_cleaning_cols = [
+                fouling_col.replace('_fouling_factor', '_cleaning'),
+                fouling_col.replace('_fouling', '_cleaning'),
+            ]
+            
+            # Try to match cleaning columns
+            for pot_col in potential_cleaning_cols:
+                if pot_col in data.columns:
+                    section_cleaning_col = pot_col
+                    break
+            
+            # If no direct match, check for pattern matches in available cleaning columns
+            if section_cleaning_col is None:
+                for col in cleaning_cols:
+                    if any(part in col.lower() for part in section_name.lower().split()):
+                        section_cleaning_col = col
+                        break
+            
+            # Fall back to global indicator
+            if section_cleaning_col is None and 'soot_blowing_active' in data.columns:
+                section_cleaning_col = 'soot_blowing_active'
+            
+            if section_cleaning_col:
                 # Find cleaning events
                 cleaning_events = data[data[section_cleaning_col] == True]
                 
                 if len(cleaning_events) > 10:  # Need sufficient events
                     effectiveness_values = []
                     
-                    for idx in cleaning_events.index[::50]:  # Sample every 50th event
-                        if idx > 24 and idx < len(data) - 24:  # Need before/after data
-                            before_fouling = data[fouling_col].iloc[idx-24:idx].mean()
-                            after_fouling = data[fouling_col].iloc[idx+1:idx+25].mean()
+                    # FIXED: Use 2-hour windows instead of 24-hour for better sensitivity
+                    for idx in cleaning_events.index[::max(1, len(cleaning_events)//20)]:  # Sample up to 20 events
+                        if idx > 2 and idx < len(data) - 2:  # Need 2-hour before/after data
+                            before_fouling = data[fouling_col].iloc[idx-2:idx].mean()
+                            after_fouling = data[fouling_col].iloc[idx+1:idx+3].mean()
                             
-                            if before_fouling > after_fouling:
+                            if before_fouling > after_fouling and before_fouling > 0:
                                 reduction = (before_fouling - after_fouling) / before_fouling * 100
-                                effectiveness_values.append(reduction)
+                                if 0 < reduction <= 100:  # Sanity check
+                                    effectiveness_values.append(reduction)
                     
                     if effectiveness_values:
                         effectiveness = np.mean(effectiveness_values)
+                        std_effectiveness = np.std(effectiveness_values)
                         cleaning_effectiveness[section_name] = effectiveness
                         
                         if effectiveness > 80:
                             status = "[EXCELLENT] Excellent"
                         elif effectiveness > 60:
                             status = "[GOOD] Good"
+                        elif effectiveness > 30:
+                            status = "[MODERATE] Moderate"
                         else:
                             status = "[POOR] Poor"
                         
-                        print(f"   {section_name}: {effectiveness:.1f}% fouling reduction {status}")
+                        print(f"   {section_name}: {effectiveness:.1f}% ± {std_effectiveness:.1f}% fouling reduction {status}")
+                        print(f"      Column: {section_cleaning_col}, Events: {len(cleaning_events)}, Samples: {len(effectiveness_values)}")
+                    
+                    else:
+                        print(f"   {section_name}: [WARNING] No measurable effectiveness (Column: {section_cleaning_col})")
+                        
+                else:
+                    print(f"   {section_name}: [WARNING] Insufficient cleaning events ({len(cleaning_events)}, Column: {section_cleaning_col})")
+            else:
+                print(f"   {section_name}: [ERROR] No corresponding cleaning column found")
         
         if cleaning_effectiveness:
             avg_effectiveness = np.mean(list(cleaning_effectiveness.values()))
@@ -246,12 +287,19 @@ def analyze_cleaning_effectiveness(data, config):
                 print("   [EXCELLENT] Excellent cleaning performance - maintain current schedule")
             elif avg_effectiveness > 60:
                 print("   [GOOD] Good cleaning performance - minor optimizations possible")
+            elif avg_effectiveness > 30:
+                print("   [MODERATE] Moderate cleaning performance - schedule optimization recommended")
             else:
-                print("   [POOR] Poor cleaning performance - schedule optimization needed")
+                print("   [POOR] Poor cleaning performance - major schedule review needed")
+        else:
+            print(f"\n[WARNING] No measurable cleaning effectiveness detected")
+            print(f"   Available cleaning columns: {cleaning_cols[:5]}")
+            print(f"   Try different time windows or check cleaning event frequency")
         
         return cleaning_effectiveness
     else:
         print("   [ERROR] Insufficient soot blowing data for effectiveness validation")
+        print(f"   Fouling columns: {len(fouling_cols)}, Cleaning columns: {len(cleaning_cols)}")
         return {}
 
 
