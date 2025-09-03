@@ -1,0 +1,49 @@
+ENHANCED ANNUAL BOILER SIMULATION METADATA
+============================================================
+
+GENERATION INFO:
+  Generated: 2025-09-03 11:35:30.252595
+  Simulation Version: 8.2 - API Compatibility Fix
+  IAPWS Integration: YES (Industry-Standard Steam Properties)
+  ASCII Compatibility: YES (Windows Compatible)
+
+DATASET INFO:
+  Records: 8,784 hourly operations
+  Time Period: 2024-01-01 to 2025-01-01
+  Data File: massachusetts_boiler_annual_20250903_113528.csv
+  File Size: 29.6 MB
+
+PERFORMANCE SUMMARY:
+  Average Efficiency: 85.6%
+  Efficiency Range: 80.0% - 86.9%
+  Efficiency Variation: 1.18% std dev
+  Average Load Factor: 82.2%
+  Load Range: 60.0% - 102.6%
+  Average Stack Temperature: 284F
+  Stack Temperature Variation: 6.6F std dev
+
+SIMULATION STATISTICS:
+  Total Hours Simulated: 8784
+  Solver Failures: 0
+  API Compatibility Fixes: 8784
+  Efficiency Warnings: 0
+  Temperature Warnings: 0
+
+DATA STRUCTURE:
+  Total Columns: 220
+  Column Categories:
+    - Timestamp & Operational (7 columns)
+    - Coal & Combustion (17 columns)
+    - Emissions (11 columns)
+    - System Performance (13 columns)
+    - Soot Blowing (16 columns)
+    - Fouling Factors (42 columns)
+    - Section Heat Transfer (42 columns)
+
+QUALITY IMPROVEMENTS:
+  - FIXED API compatibility between AnnualBoilerSimulator and EnhancedCompleteBoilerSystem
+  - Proper parameter extraction from solve_enhanced_system results
+  - Robust fallback handling for solver interface mismatches
+  - ASCII-safe temperature and efficiency logging
+  - Enhanced error handling and debugging output
+  - Fixed indentation errors causing syntax failures
