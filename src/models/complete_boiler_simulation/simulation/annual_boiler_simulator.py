@@ -92,15 +92,15 @@ class AnnualBoilerSimulator:
                               1.10, 1.08, 1.05, 1.02, 0.98, 0.90]   # Summer/Fall
         }
         
-        # Enhanced soot blowing schedule (realistic intervals)
+        # Corrected soot blowing schedule - frequent cleaning where fouling is highest
         self.soot_blowing_schedule = {
-            'furnace_walls': 72,        # Every 3 days
-            'generating_bank': 48,      # Every 2 days  
-            'superheater_primary': 96,  # Every 4 days
-            'superheater_secondary': 120, # Every 5 days
-            'economizer_primary': 168,  # Weekly
-            'economizer_secondary': 240, # Every 10 days
-            'air_heater': 336           # Every 2 weeks
+            'furnace_walls': 24,        # Most frequent - highest fouling rate
+            'generating_bank': 36,      # High frequency - high fouling
+            'superheater_primary': 48,  # Moderate frequency 
+            'superheater_secondary': 72, # Every 3 days
+            'economizer_primary': 96,   # Every 4 days
+            'economizer_secondary': 168, # Weekly
+            'air_heater': 336           # Least frequent - lowest fouling rate
         }
         
         # Track last cleaning times
@@ -745,16 +745,16 @@ class AnnualBoilerSimulator:
         
         fouling_data = {}
         
-        # CRITICAL FIX: Define fouling rates with matching section names from soot_blowing_schedule
-        # These rates reflect industrial boiler fouling behavior
+        # CORRECTED: Define fouling rates with CORRECT industrial physics
+        # High temperatures make soot sticky and cause MORE fouling, not less
         fouling_rates = {
-            'furnace_walls': 0.00004,           # Slow fouling in high-temperature furnace (0.04% per hour)
-            'generating_bank': 0.00008,         # Moderate fouling (0.08% per hour)
-            'superheater_primary': 0.00012,     # Higher fouling in superheater (0.12% per hour)
-            'superheater_secondary': 0.00015,   # Slightly higher in secondary SH (0.15% per hour)
-            'economizer_primary': 0.00020,      # High fouling in lower temp economizer (0.20% per hour)
-            'economizer_secondary': 0.00025,    # Higher fouling in secondary economizer (0.25% per hour)
-            'air_heater': 0.00030              # Highest fouling in coldest section (0.30% per hour)
+            'furnace_walls': 0.00030,           # HIGHEST fouling - high temp makes soot sticky (0.30% per hour)
+            'generating_bank': 0.00025,         # High fouling - still very hot (0.25% per hour)
+            'superheater_primary': 0.00020,     # Moderate-high fouling (0.20% per hour)
+            'superheater_secondary': 0.00015,   # Moderate fouling (0.15% per hour)
+            'economizer_primary': 0.00012,      # Lower fouling as temp drops (0.12% per hour)
+            'economizer_secondary': 0.00008,    # Low fouling - cooler temps (0.08% per hour)
+            'air_heater': 0.00004              # LOWEST fouling - coldest section (0.04% per hour)
         }
         
         # CRITICAL FIX: Section name mapping for output consistency

@@ -55,10 +55,10 @@ soot_distribution = {
 ```
 
 **Physics Rationale:**
-- **Furnace (45%)**: Primary soot formation zone due to high temperatures and fuel-rich combustion regions
-- **Superheater (30%)**: Soot continues to form and deposit on heat transfer surfaces
-- **Economizer (20%)**: Cooler temperatures reduce formation but allow existing soot deposition
-- **Air Heater (5%)**: Coldest section with minimal soot formation but some carryover
+- **Furnace (45%)**: Primary soot formation zone due to fuel-rich combustion regions, but high temperatures reduce adhesion
+- **Superheater (30%)**: Soot formation continues, temperatures make soot sticky and adherent to surfaces
+- **Economizer (20%)**: Lower temperatures allow better soot adhesion and deposit buildup
+- **Air Heater (5%)**: Coldest section where soot becomes very sticky, but less total soot reaches this area
 
 ### Combustion Conditions Impact on Soot Formation
 
@@ -98,22 +98,22 @@ def calculate_nox_soot_correlation():
 #### Section-Specific Fouling Rates
 ```python
 fouling_rates = {
-    'furnace_walls': 0.00004,           # 0.04% per hour (slow - high temp)
-    'generating_bank': 0.00008,         # 0.08% per hour (moderate)
-    'superheater_primary': 0.00012,     # 0.12% per hour (higher)
-    'superheater_secondary': 0.00015,   # 0.15% per hour (higher still)
-    'economizer_primary': 0.00020,      # 0.20% per hour (high - lower temp)
-    'economizer_secondary': 0.00025,    # 0.25% per hour (higher)
-    'air_heater': 0.00030              # 0.30% per hour (highest - coldest)
+    'furnace_walls': 0.00030,           # 0.30% per hour (HIGHEST - high temp, sticky soot)
+    'generating_bank': 0.00025,         # 0.25% per hour (high - still very hot)
+    'superheater_primary': 0.00020,     # 0.20% per hour (moderate-high)
+    'superheater_secondary': 0.00015,   # 0.15% per hour (moderate)
+    'economizer_primary': 0.00012,      # 0.12% per hour (lower - temp drops)
+    'economizer_secondary': 0.00008,    # 0.08% per hour (low - cooler)
+    'air_heater': 0.00004              # 0.04% per hour (LOWEST - coldest section)
 }
 ```
 
 **Physics Rationale:**
-- **Furnace**: Lowest fouling rate due to high temperatures that prevent adhesion
-- **Generating Bank**: Moderate fouling as temperatures begin to drop
-- **Superheaters**: Increasing fouling rates as soot begins to stick to surfaces
-- **Economizers**: High fouling rates due to sticky ash and soot deposits
-- **Air Heater**: Highest fouling due to acid condensation and particle adhesion
+- **Furnace**: HIGHEST fouling rate - high temperatures make soot sticky and adherent to surfaces
+- **Generating Bank**: High fouling - still very hot, promotes soot adhesion
+- **Superheaters**: Moderate-high fouling rates as temperatures remain elevated
+- **Economizers**: Lower fouling rates as temperatures drop, less sticky soot
+- **Air Heater**: LOWEST fouling - coldest section, minimal soot adhesion
 
 #### Fouling Factor Calculation
 ```python
@@ -190,22 +190,22 @@ def calculate_sulfur_fouling_factor(sulfur_content):
 #### Section-Specific Cleaning Intervals
 ```python
 soot_blowing_schedule = {
-    'furnace_walls': {'interval_hours': 72, 'priority': 'high'},
-    'generating_bank': {'interval_hours': 48, 'priority': 'high'},
-    'superheater_primary': {'interval_hours': 24, 'priority': 'critical'},
-    'superheater_secondary': {'interval_hours': 24, 'priority': 'critical'},
-    'economizer_primary': {'interval_hours': 36, 'priority': 'medium'},
-    'economizer_secondary': {'interval_hours': 48, 'priority': 'medium'},
-    'air_heater': {'interval_hours': 96, 'priority': 'low'}
+    'furnace_walls': {'interval_hours': 24, 'priority': 'critical'},
+    'generating_bank': {'interval_hours': 36, 'priority': 'high'},
+    'superheater_primary': {'interval_hours': 48, 'priority': 'high'},
+    'superheater_secondary': {'interval_hours': 72, 'priority': 'medium'},
+    'economizer_primary': {'interval_hours': 96, 'priority': 'medium'},
+    'economizer_secondary': {'interval_hours': 168, 'priority': 'low'},
+    'air_heater': {'interval_hours': 336, 'priority': 'low'}
 }
 ```
 
 **Industrial Rationale:**
-- **Superheaters**: Most frequent cleaning (24h) - critical for steam temperature control
-- **Generating Bank**: Frequent cleaning (48h) - important for heat transfer
-- **Furnace**: Moderate cleaning (72h) - high temperatures self-clean to some extent
-- **Economizers**: Moderate frequency (36-48h) - balance between fouling and steam production
-- **Air Heater**: Least frequent (96h) - less critical for immediate operation
+- **Furnace**: Most frequent cleaning (24h) - highest fouling rate requires most attention
+- **Generating Bank**: High frequency cleaning (36h) - high fouling rate
+- **Superheaters**: Moderate frequency (48-72h) - moderate fouling rates
+- **Economizers**: Lower frequency (96-168h) - lower fouling rates as temperature drops
+- **Air Heater**: Least frequent (336h/2 weeks) - lowest fouling rate
 
 ### Effectiveness Parameter Setting
 
