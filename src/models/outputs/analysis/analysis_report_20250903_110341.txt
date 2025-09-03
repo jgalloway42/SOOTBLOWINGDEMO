@@ -1,0 +1,14 @@
+BOILER DATA ANALYSIS REPORT
+==================================================
+
+Generated: 2025-09-03 11:03:40.843207
+Dataset Records: 8,784
+
+DATASET SUMMARY:
+  Total Records: 8,784
+
+EFFICIENCY ANALYSIS:
+  Mean Efficiency: 85.6%
+  Efficiency Range: 80.0% - 87.0%
+  Standard Deviation: 1.18%
+  Performance Grade: Excellent

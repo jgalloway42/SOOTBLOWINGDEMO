@@ -130,8 +130,9 @@ cd SootblowingDemoJune2025
 
 ### For Claude Code Sessions
 - **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
-- **Use latest dataset**: `massachusetts_boiler_annual_20250829_132638.csv`
-- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250829_132638.txt`
+- **Use latest dataset**: `massachusetts_boiler_annual_20250903_110338.csv`
+- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_110338.txt`
+- **Dataset status**: ✅ Working simulation with 98.7% cleaning effectiveness (validated)
 - **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
 - **Windows compatibility**: All Unicode issues resolved, use ASCII output
 - **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead

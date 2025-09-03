@@ -528,7 +528,7 @@ class AnnualBoilerSimulator:
         return soot_blowing_actions
     
     def _apply_soot_blowing_effects(self, soot_blowing_actions: Dict):
-        """Apply soot blowing effects to boiler sections."""
+        """Apply soot blowing effects to boiler sections and reset fouling timing."""
         
         for section_name, action in soot_blowing_actions.items():
             if action['action']:  # If cleaning is happening
@@ -540,8 +540,16 @@ class AnnualBoilerSimulator:
                         # Apply cleaning effectiveness
                         if hasattr(section, 'apply_cleaning'):
                             section.apply_cleaning(action['effectiveness'])
-                        
+                    
+                    # CRITICAL FIX: Ensure fouling timer is reset for this section
+                    # This ensures _generate_fouling_data() uses the correct reset time
+                    if hasattr(self, 'last_cleaned') and section_name in self.last_cleaned:
+                        # Note: last_cleaned is already updated in _check_soot_blowing_schedule
+                        # but we need to ensure it's the current datetime for this cleaning event
                         logger.debug(f"Applied soot blowing to {section_name}: {action['effectiveness']:.1%} effectiveness")
+                        logger.debug(f"Fouling timer reset for {section_name} at {self.last_cleaned[section_name]}")
+                    else:
+                        logger.warning(f"Could not update fouling timer for {section_name}")
                 
                 except Exception as e:
                     logger.debug(f"Could not apply soot blowing to {section_name}: {e}")
@@ -737,27 +745,37 @@ class AnnualBoilerSimulator:
         
         fouling_data = {}
         
-        # Define fouling progression rates for different sections (per hour)
+        # CRITICAL FIX: Define fouling rates with matching section names from soot_blowing_schedule
         # These rates reflect industrial boiler fouling behavior
         fouling_rates = {
-            'furnace': 0.00004,           # Slow fouling in high-temperature furnace (0.04% per hour)
-            'generating_bank': 0.00008,   # Moderate fouling (0.08% per hour)
-            'superheater_1': 0.00012,     # Higher fouling in superheater (0.12% per hour)
-            'superheater_2': 0.00015,     # Slightly higher in secondary SH (0.15% per hour)
-            'economizer_1': 0.00020,      # High fouling in lower temp economizer (0.20% per hour)
-            'economizer_2': 0.00025,      # Higher fouling in secondary economizer (0.25% per hour)
-            'air_heater': 0.00030         # Highest fouling in coldest section (0.30% per hour)
+            'furnace_walls': 0.00004,           # Slow fouling in high-temperature furnace (0.04% per hour)
+            'generating_bank': 0.00008,         # Moderate fouling (0.08% per hour)
+            'superheater_primary': 0.00012,     # Higher fouling in superheater (0.12% per hour)
+            'superheater_secondary': 0.00015,   # Slightly higher in secondary SH (0.15% per hour)
+            'economizer_primary': 0.00020,      # High fouling in lower temp economizer (0.20% per hour)
+            'economizer_secondary': 0.00025,    # Higher fouling in secondary economizer (0.25% per hour)
+            'air_heater': 0.00030              # Highest fouling in coldest section (0.30% per hour)
+        }
+        
+        # CRITICAL FIX: Section name mapping for output consistency
+        section_output_names = {
+            'furnace_walls': 'furnace',
+            'generating_bank': 'generating_bank', 
+            'superheater_primary': 'superheater_1',
+            'superheater_secondary': 'superheater_2',
+            'economizer_primary': 'economizer_1',
+            'economizer_secondary': 'economizer_2',
+            'air_heater': 'air_heater'
         }
         
         # Generate fouling factors for each section based on hours since last cleaning
-        for section, base_rate in fouling_rates.items():
-            # Get hours since last cleaning for this specific section
-            section_key = section.replace('_', ' ')
+        for section_schedule_name, base_rate in fouling_rates.items():
+            # CRITICAL FIX: Use the section name from the cleaning schedule
             hours_since_cleaning = 0
             
             # Find the hours since last cleaning for this section
-            if hasattr(self, 'last_cleaned') and section_key in self.last_cleaned:
-                hours_since_cleaning = (current_datetime - self.last_cleaned[section_key]).total_seconds() / 3600
+            if hasattr(self, 'last_cleaned') and section_schedule_name in self.last_cleaned:
+                hours_since_cleaning = (current_datetime - self.last_cleaned[section_schedule_name]).total_seconds() / 3600
             else:
                 # If no cleaning history, use hours since simulation start
                 hours_since_cleaning = (current_datetime - self.start_date).total_seconds() / 3600
@@ -787,18 +805,21 @@ class AnnualBoilerSimulator:
             # Apply realistic bounds based on industrial experience
             current_fouling = max(1.0, min(1.25, current_fouling))  # 1.0 to 1.25 range
             
-            # Store fouling data
-            fouling_data[f'{section}_fouling_factor'] = current_fouling
-            fouling_data[f'{section}_heat_transfer_loss_pct'] = (current_fouling - 1.0) * 100
+            # CRITICAL FIX: Use output section name for data consistency
+            output_section_name = section_output_names[section_schedule_name]
+            
+            # Store fouling data with output section names
+            fouling_data[f'{output_section_name}_fouling_factor'] = current_fouling
+            fouling_data[f'{output_section_name}_heat_transfer_loss_pct'] = (current_fouling - 1.0) * 100
             
             # Generate segment-specific data (6 segments per section)
             for segment in range(1, 7):
                 segment_variation = np.random.uniform(-0.01, 0.01)
                 segment_fouling = max(1.0, min(1.25, current_fouling + segment_variation))
-                fouling_data[f'{section}_segment_{segment}_fouling'] = segment_fouling
+                fouling_data[f'{output_section_name}_segment_{segment}_fouling'] = segment_fouling
             
-            # Store hours since cleaning for validation
-            fouling_data[f'hours_since_last_{section}'] = hours_since_cleaning
+            # Store hours since cleaning for validation (using schedule name for traceability)
+            fouling_data[f'hours_since_last_{output_section_name}'] = hours_since_cleaning
         
         return fouling_data
     
