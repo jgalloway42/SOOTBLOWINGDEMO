@@ -8,7 +8,8 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 ### Current Status
 - **Phase**: Development & Demo Preparation  
 - **Focus**: Soot blowing optimization for industrial boilers
-- **Dataset**: Physics-corrected annual simulation (8,784 records)
+- **Dataset**: Calibrated effectiveness annual simulation (8,784 records)
+- **Effectiveness**: 88.4% average cleaning effectiveness (calibrated for commercial demo)
 - **Ready For**: LSTM model training and optimization algorithms
 
 ### Main Directories
@@ -20,7 +21,8 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 │   └── data_generation/                     # Dataset generation scripts
 ├── notebooks/                               # Jupyter analysis notebooks
 │   ├── 2.4-*-eda-validated-simulation.ipynb # Comprehensive EDA (FIXED)
-│   └── 2.5-*-physics-corrected-sim-eda.ipynb # Physics validation
+│   ├── 2.5-*-physics-corrected-sim-eda.ipynb # Physics validation
+│   └── 2.6-*-fouling-corrected-sim-eda.ipynb # Calibrated effectiveness analysis
 ├── data/generated/annual_datasets/          # Simulation datasets
 └── outputs/                                # Analysis reports and metadata
 ```
@@ -28,12 +30,18 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 ### Key Files
 - `annual_boiler_simulator.py` - Main simulation engine with physics corrections
 - `boiler_eda_analysis.py` - Comprehensive analysis functions (Windows-compatible)
-- `massachusetts_boiler_annual_20250829_132638.csv` - Latest physics-corrected dataset
+- `massachusetts_boiler_annual_20250903_113908.csv` - Latest calibrated dataset (88.4% effectiveness)
 
 ## Technical Context
 
 ### Recent Major Work
-1. **Physics Corrections Applied** (CRITICAL):
+1. **Calibrated Effectiveness System** (LATEST):
+   - Achieved 88.4% average cleaning effectiveness (target: 90-95%)
+   - Updated effectiveness parameters to 88-97% range in simulation
+   - Fixed output file paths to use project root directories
+   - Created notebook 2.6 for calibrated system analysis
+
+2. **Physics Corrections Applied** (VALIDATED):
    - Fixed efficiency-fouling correlation (now negative as expected)
    - Implemented time-based fouling accumulation (time since last cleaning)
    - Added CEMS stack temperature correlations with fouling
@@ -62,7 +70,10 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 # Test analysis functions
 python -c "from src.models.complete_boiler_simulation.analysis.boiler_eda_analysis import run_comprehensive_analysis"
 
-# Run latest dataset analysis
+# Run latest dataset analysis (calibrated system)
+jupyter notebook notebooks/2.6-jdg-boiler-fouling-dataset-fouling-corrected-sim-eda.ipynb
+
+# Run physics validation analysis
 jupyter notebook notebooks/2.5-jdg-boiler-fouling-dataset-physics-corrected-sim-eda.ipynb
 
 # Generate new simulation dataset
@@ -130,9 +141,9 @@ cd SootblowingDemoJune2025
 
 ### For Claude Code Sessions
 - **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
-- **Use latest dataset**: `massachusetts_boiler_annual_20250903_110338.csv`
-- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_110338.txt`
-- **Dataset status**: ✅ Working simulation with 98.7% cleaning effectiveness (validated)
+- **Use latest dataset**: `massachusetts_boiler_annual_20250903_113908.csv`
+- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_113908.txt`
+- **Dataset status**: ✅ Calibrated simulation with 88.4% cleaning effectiveness (commercial demo ready)
 - **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
 - **Windows compatibility**: All Unicode issues resolved, use ASCII output
 - **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead

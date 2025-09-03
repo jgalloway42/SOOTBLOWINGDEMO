@@ -511,7 +511,7 @@ class AnnualBoilerSimulator:
                 soot_blowing_actions[section_name] = {
                     'action': True,
                     'hours_since_last': hours_since_cleaned,
-                    'effectiveness': np.random.uniform(0.75, 0.95),
+                    'effectiveness': np.random.uniform(0.88, 0.97),
                     'segments_cleaned': 'all'
                 }
                 
