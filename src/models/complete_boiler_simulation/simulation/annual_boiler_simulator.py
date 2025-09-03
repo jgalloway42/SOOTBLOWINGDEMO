@@ -37,7 +37,7 @@ from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIn
 from core.thermodynamic_properties import PropertyCalculator
 
 # Set up enhanced logging - use project root
-project_root = Path(__file__).parent.parent.parent.parent.parent
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
 log_dir = project_root / "logs" / "simulation"
 log_dir.mkdir(parents=True, exist_ok=True)
 

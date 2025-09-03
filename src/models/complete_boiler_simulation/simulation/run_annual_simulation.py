@@ -36,7 +36,7 @@ from datetime import datetime
 from pathlib import Path
 
 # Set up logging for the runner script - use project root
-project_root = Path(__file__).parent.parent.parent.parent.parent
+project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
 log_dir = project_root / "logs" / "debug"
 log_dir.mkdir(parents=True, exist_ok=True)
 
