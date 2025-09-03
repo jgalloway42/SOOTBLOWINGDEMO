@@ -153,28 +153,35 @@ cd SootblowingDemoJune2025
 ## Important Notes
 
 ### For Claude Code Sessions
-- **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
-- **Use latest dataset**: `massachusetts_boiler_annual_20250903_115813.csv`
-- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_115813.txt`
-- **Dataset status**: ❌ **NOT VALID** - simulation broken, datasets not realistic
-- **⚠️ CRITICAL**: Simulation must be fixed before any meaningful work can proceed
-- **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
-- **Windows compatibility**: All Unicode issues resolved, use ASCII output
-- **NO UNICODE CHARACTERS**: Never use emojis or Unicode in code - use ASCII bracket notation like [SUCCESS], [ERROR], [WARNING], [DATA] instead
-- **Model preference**: Use Claude Sonnet 4 as default (current model)
-- **Simulation validation**: Physics corrections confirmed working
 
-### Common Issues Fixed
-- ❌ AttributeError in outlier detection → ✅ Simplified for simulated data
-- ❌ Unicode encoding on Windows → ✅ ASCII-safe bracket notation
-- ❌ Positive efficiency-fouling correlation → ✅ Negative correlation (-0.664)
-- ❌ API compatibility → ✅ Fixed parameter extraction
+#### CRITICAL DEVELOPMENT CONSTRAINTS:
+- **NO NEW FEATURES**: Do not add any new features, components, or capabilities unless explicitly requested and approved
+- **FOCUS ON CORE ISSUES**: Only work on fixing the broken simulation architecture
+- **ASCII ONLY**: Use only ASCII characters in ALL code, documentation, and output - no Unicode, emojis, or special characters
+- **PRAGMATIC STATUS**: Use realistic, honest language when describing project status - no marketing speak or overly optimistic assessments
+
+#### Technical Guidelines:
+- **Always run analysis functions through the module**: Import from `boiler_eda_analysis.py` 
+- **Current dataset**: `massachusetts_boiler_annual_20250903_115813.csv` (NOT VALID - from broken simulation)
+- **Dataset metadata**: Available in `outputs/metadata/massachusetts_boiler_annual_metadata_20250903_115813.txt`
+- **Dataset status**: BROKEN - simulation architecture flawed, datasets unrealistic
+- **CRITICAL**: Simulation must be fixed before any meaningful work can proceed
+- **Soot blowing columns**: 16 section-specific columns available (`[section]_cleaning` pattern)
+- **Character encoding**: ASCII only - use [SUCCESS], [ERROR], [WARNING], [DATA] bracket notation
+- **Model preference**: Use Claude Sonnet 4 as default (current model)
+
+### Issues Status
+- AttributeError in outlier detection: FIXED - Simplified for simulated data
+- Unicode encoding on Windows: FIXED - ASCII-safe bracket notation only
+- Positive efficiency-fouling correlation: FIXED - Negative correlation (-0.664)  
+- API compatibility: FIXED - Parameter extraction working
+- Effectiveness calculation: BROKEN - Core simulation architecture flawed
 
 ### Business Context
 - **Industry**: Power generation / Industrial boilers
 - **Goal**: Optimize soot blowing schedules for maximum efficiency
-- **Savings Potential**: 2-5% efficiency improvement through optimized cleaning
-- **Timeline**: Ready for commercial deployment
+- **Savings Potential**: 2-5% efficiency improvement through optimized cleaning (theoretical)
+- **Timeline**: Major development work required - not ready for deployment
 
 ## Lint/Build Commands
 ```bash
