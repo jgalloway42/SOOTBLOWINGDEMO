@@ -2,12 +2,130 @@
 
 **File Location:** `docs/api/KNOWN_ISSUES_AND_FIXES.md`  
 **Created:** August 2025  
-**Status:** ✅ MAJOR MILESTONE - Comprehensive EDA Analysis Complete + Critical Physics Issues Identified  
-**Version:** 8.4 - EDA Analysis Complete, Physics Improvement Phase Ready
+**Status:** ❌ CRITICAL PHYSICS CORRELATION FAILURES - Boolean Detection Fixed, Physics Issues Identified  
+**Version:** 9.1 - Physics Correlation Analysis Complete, Major Issues Discovered
 
 ---
 
-## ✅ MAJOR MILESTONE ACHIEVED (LATEST UPDATE)
+## ❌ CRITICAL PHYSICS CORRELATION FAILURES (SEPTEMBER 2025 - LATEST FINDINGS)
+
+### 🔥 **URGENT: Major Physics Validation Failures Discovered**
+
+**Issue:** All three primary physics validation metrics are failing, indicating fundamental problems with simulation physics.
+
+**Validation Results (FAILED)**:
+```bash
+# PHYSICS CORRELATIONS - ❌ ALL FAILING
+❌ Time-fouling correlation: r=-0.001 (target: >+0.4) - MAJOR FAILURE
+❌ Efficiency-fouling correlation: r=+0.018 (target: <-0.25) - WRONG DIRECTION  
+❌ Stack temperature-fouling: r=+0.016 (target: >+0.2) - INSUFFICIENT IMPACT
+
+# OPERATIONAL PARAMETERS - MIXED RESULTS
+✅ Load factor compliance: 60.0%-103.0% range - WITHIN SPECS
+❌ Constant temperature columns: final_steam_temp_F, furnace_gas_temp_out_F - STATIC
+❌ Fouling accumulation: 1.000-1.005 range (expected 1.0-1.25) - TOO NARROW
+```
+
+### Root Cause Analysis (CRITICAL FINDINGS)
+
+**1. ULTRA-NARROW FOULING RANGE PROBLEM**:
+- **Actual range**: 1.000 to 1.005 (0.5% variation)
+- **Expected range**: 1.0 to 1.25 (25% fouling degradation)
+- **Impact**: No meaningful fouling buildup for correlation analysis
+- **Location**: `annual_boiler_simulator.py:817` - `max(1.0, min(1.25, current_fouling))`
+
+**2. CONSERVATIVE FOULING RATES**:
+- **Current rates**: 0.00004 to 0.00030 per hour 
+- **Actual accumulation**: ~0.005 over 8,760 hours (negligible)
+- **Required rates**: Need 3-5x increase for realistic buildup
+- **Location**: `annual_boiler_simulator.py:761-769`
+
+**3. WEAK PHYSICS IMPACT SCALING**:
+- **Efficiency impact**: `(fouling - 1.0) * 0.25` = 0.00125 max effect
+- **Temperature impact**: `(fouling - 1.0) * 120°F` = 0.6°F max increase
+- **Required scaling**: Need 5-10x stronger impact factors
+- **Location**: `annual_boiler_simulator.py:1094, 1141`
+
+**4. CONSTANT TEMPERATURE ISSUES**:
+- **Steam temperature**: Hardcoded 700.0°F fallbacks 
+- **Furnace gas outlet**: Static calculation not responding to fouling
+- **Impact**: Zero temperature-fouling correlations possible
+- **Locations**: Multiple fallback values in `annual_boiler_simulator.py:292, 314, 909`
+
+**5. FREQUENT CLEANING RESETS**:
+- **Cleaning intervals**: 24-168 hours (too frequent)
+- **Fouling buildup time**: Insufficient for meaningful accumulation
+- **Reset mechanism**: Timer-only resets prevent gradual fouling
+- **Location**: `annual_boiler_simulator.py:783-824`
+
+### Impact Assessment (CRITICAL)
+
+**ML Training Data Quality**: ❌ COMPROMISED
+- Near-zero correlations provide no learning signals
+- Constant parameters eliminate feature importance
+- Physics relationships not represented in data
+
+**Commercial Demo Viability**: ⚠️ LIMITED  
+- Core functionality works (cleaning events, boolean detection)
+- Physics credibility severely damaged
+- Industrial validation impossible with current correlations
+
+**Validation Framework**: ✅ WORKING
+- Boolean detection fixed (1,002 events detected vs 0 previously)
+- Analysis framework correctly identifies the problems
+- Measurement tools functioning properly
+
+### Priority Classification
+
+**URGENT - HIGH IMPACT**:
+1. **Fouling rate increases** - Enable realistic accumulation (1.0 to 1.2+ range)
+2. **Impact scaling fixes** - Strengthen efficiency/temperature relationships  
+3. **Dynamic temperatures** - Implement load/fouling-dependent calculations
+
+**MEDIUM - SUPPORTING**:
+4. **Cleaning interval optimization** - Allow longer fouling buildup periods
+5. **Range expansion** - Remove artificial fouling caps
+
+**Status:** ❌ **CRITICAL PRIORITY - SYSTEM NOT READY FOR ML TRAINING**  
+**Timeline:** Physics fixes required before commercial demonstration  
+**Risk:** HIGH - Core value proposition (physics-based optimization) compromised
+
+---
+
+## ✅ BOOLEAN DETECTION LOGIC FIXED (SEPTEMBER 2025)
+
+### Issue: Notebook Analysis Showing 0.3% Effectiveness  
+
+**Root Cause Discovered**: Boolean detection logic in notebook was using `== 1` instead of `== True`
+
+**Problem Code**:
+```python
+# WRONG - Looking for integer 1 instead of boolean True
+cleaning_events = df[df[cleaning_col] == 1]  # Returns 0 events
+```
+
+**Fixed Code**:
+```python
+# CORRECT - Using proper boolean comparison
+cleaning_events = df[df[cleaning_col] == True]  # Returns 1,002 events
+```
+
+**Resolution Results**:
+- **Before fix**: 0 cleaning events detected, 0.3% effectiveness
+- **After fix**: 1,002 cleaning events detected across all sections
+- **Event frequencies**: 1.0-4.2% per section (realistic)
+- **Effectiveness measurement**: Framework working, showing 0.8% (due to physics issues above)
+
+**Files Updated**:
+- `notebooks/2.6-jdg-boiler-fouling-dataset-fouling-corrected-sim-eda.ipynb`
+- Multiple analysis cells corrected with proper boolean detection
+
+**Status:** ✅ **RESOLVED** - Boolean detection working correctly
+**Impact:** Analysis framework now functional, revealing true physics issues
+
+---
+
+## ✅ MAJOR MILESTONE ACHIEVED (PREVIOUS UPDATES)
 
 ### 🎯 **COMPLETED: Comprehensive Fouling Dynamics Validation & EDA Analysis**
 
@@ -20,44 +138,60 @@
 - Cleaning schedule optimization analysis with cost-benefit modeling
 - CEMS data correlation analysis for real-world monitoring integration
 
-## ✅ CRITICAL PHYSICS ISSUES **RESOLVED SUCCESSFULLY**
+## ⚠️ MIXED RESULTS: CENTRALIZED ARCHITECTURE WORKING, PHYSICS FAILING
 
-### ✅ **COMPLETED: Industrial Physics Model Enhancement**
+### ✅ **ARCHITECTURE SUCCESS: Centralized Soot Blowing System**
 
-**Achievement:** All critical physics modeling issues have been successfully resolved with outstanding validation results.
+**Achievement:** Successfully implemented centralized soot blowing architecture with working event generation and cleaning logic.
 
-**FINAL VALIDATION RESULTS:**
+**CENTRALIZED ARCHITECTURE VALIDATION RESULTS:**
 ```bash
-# FOULING PHYSICS - ✅ FIXED AND VALIDATED
-✅ Time-fouling correlations: r=+0.974 (target: >0.4) - EXCELLENT
-✅ Efficiency-fouling: r=-0.664 (target: <-0.25) - EXCELLENT
-✅ CEMS correlations: Stack temp increases with fouling - CORRECT
+# CENTRALIZED SOOT BLOWING LOGIC - ✅ WORKING
+✅ Section-specific cleaning: 7 major boiler sections implemented
+✅ Cleaning event generation: 1,002 events detected across sections
+✅ Boolean data types: Proper True/False cleaning indicators  
+✅ Fire-side only logic: Water-side fouling correctly unaffected
+✅ Cleaning frequencies: 1.0-4.2% realistic operational ranges
 
-# OPERATIONAL PARAMETERS - ✅ ALL RESOLVED  
-✅ Load factor compliance: 60.0%-104.8% range - WITHIN SPECS
-✅ Coal parameter variation: Full variability implemented
-✅ Realistic parameter independence: No more constant columns
-
-# CLEANING EFFECTIVENESS - ✅ WORKING CORRECTLY
-✅ Soot blowing: 282 cleaning events in annual simulation
-✅ Fouling accumulation: 1.000 → 1.250 realistic progression
-✅ Efficiency degradation: 86.9% → 75.3% over time
+# CENTRALIZED CLASS STRUCTURE - ✅ IMPLEMENTED
+✅ SootBlowingSimulator: All methods centralized successfully
+✅ Unified SootProductionModel: Combined combustion effects
+✅ 90-95% effectiveness targeting: Framework in place
+✅ Fouling baseline tracking: Post-cleaning levels maintained
+✅ Section-specific schedules: Different intervals per boiler section
 ```
 
-**PHYSICS MODEL ENHANCEMENTS COMPLETED:**
+**PHYSICS VALIDATION RESULTS (CURRENT ISSUES):**
+```bash
+# PHYSICS CORRELATIONS - ❌ FAILING VALIDATION  
+❌ Time-fouling correlations: r=-0.001 (target: >+0.4) - NEAR ZERO
+❌ Efficiency-fouling: r=+0.018 (target: <-0.25) - WRONG DIRECTION
+❌ Stack temperature-fouling: r=+0.016 (target: >+0.2) - NO RELATIONSHIP
 
-**✅ Priority 1 - Core Physics Relationships:**
-1. ✅ Load factor range calculation (working correctly - was analysis issue)
-2. ✅ Efficiency-fouling correlation direction (now properly negative)
-3. ✅ Time-based fouling accumulation modeling (time since cleaning)
-4. ✅ CEMS stack temperature correlations (fouling impact implemented)
+# OPERATIONAL REALISM - MIXED RESULTS
+✅ Load factor compliance: 60.0%-103.0% range - WITHIN SPECS  
+❌ Fouling accumulation: 1.000-1.005 actual vs 1.0-1.25 expected
+❌ Temperature dynamics: Static 700°F steam, constant furnace gas outlet
+⚠️ Cleaning effectiveness: Architecture works, physics impact insufficient
+```
 
-**✅ Priority 2 - Parameter Realism Enhancements:**
-1. ✅ Realistic variability to all parameters (combustion_model dependency removed)
-2. ✅ Proper soot blowing effectiveness modeling (realistic cleaning cycles)
-3. ✅ Realistic parameter noise and independence (all correlations correct)
+**CURRENT IMPLEMENTATION STATUS:**
 
-**IMPLEMENTATION COMPLETED:** Focused 2-day physics enhancement cycle - **SUCCESSFUL**
+**✅ ARCHITECTURAL IMPROVEMENTS COMPLETED:**
+1. ✅ Centralized SootBlowingSimulator: All soot blowing methods unified
+2. ✅ Fire-side only cleaning: Water-side fouling correctly unaffected  
+3. ✅ Boolean detection fixes: Proper True/False event identification
+4. ✅ Section-specific cleaning: 7 boiler sections with individual schedules
+5. ✅ 90-95% effectiveness framework: Architecture ready for calibration
+
+**❌ PHYSICS CORRELATION ISSUES REQUIRING FIXES:**
+1. ❌ Fouling accumulation rates: Too conservative (0.00004-0.00030/hr)
+2. ❌ Impact scaling factors: Too weak (efficiency: 0.25x, temperature: 120°F)
+3. ❌ Temperature dynamics: Static fallbacks instead of load/fouling dependency  
+4. ❌ Fouling range limits: Artificial caps preventing realistic degradation
+5. ❌ Cleaning intervals: Too frequent for meaningful fouling buildup
+
+**IMPLEMENTATION STATUS:** Mixed results - Architecture working, physics insufficient
 
 ```python
 if __name__ == "__main__":
@@ -403,6 +537,97 @@ Ready for: Immediate validation and annual simulation execution
 **Status:** API compatibility issues RESOLVED ✅ | File corruption IDENTIFIED ⚠️  
 **Next Step:** Fix main section, then execute validation and annual simulation  
 **Validation:** Run validation scripts after file fix to confirm system readiness
+
+---
+
+## ❌ CONSTANT TEMPERATURE ISSUES (DETAILED ANALYSIS)
+
+### Issue: Static Temperature Values Breaking Physics Correlations
+
+**Root Cause**: Multiple temperature parameters are hardcoded to constant values, eliminating temperature-fouling correlations essential for physics validation.
+
+### **1. Final Steam Temperature - Constant 700.0°F**
+
+**Problem Locations**:
+- `annual_boiler_simulator.py:292`: `system_performance.get('final_steam_temperature', 700.0)`
+- `annual_boiler_simulator.py:314`: `steam_temp = 700.0` (fallback when solver fails)
+- `annual_boiler_simulator.py:909`: `'final_steam_temp_F': 700.0` (fallback performance)
+- `boiler_system.py:62`: `target_steam_temp: float = 700` (initialization default)
+
+**Impact**:
+- Zero correlation with fouling levels (r=0.0)
+- No load factor dependency
+- Eliminates steam temperature as optimization variable
+- Breaks industrial realism (steam temps should vary 680-720°F)
+
+**Expected Behavior**:
+```python
+# Steam temperature should respond to:
+steam_temp = base_temp - (fouling_factor - 1.0) * temp_reduction_per_fouling
+steam_temp = 700 - load_factor_adjustment + combustion_quality_bonus
+```
+
+### **2. Furnace Gas Outlet Temperature - Static Calculation**
+
+**Problem Location**:
+- `annual_boiler_simulator.py:855`: `'furnace': {'gas_out': furnace_gas_in, 'q_mmbtu_hr': ...}`
+
+**Root Cause**: `furnace_gas_in` is likely a constant value not varying with:
+- Load factor changes
+- Fouling accumulation levels  
+- Combustion efficiency variations
+
+**Impact**:
+- No furnace temperature-fouling correlation
+- Missing critical CEMS relationship validation
+- Eliminates furnace monitoring as optimization input
+
+**Expected Behavior**:
+```python
+# Furnace gas outlet should increase with fouling:
+furnace_gas_out = base_furnace_temp + (fouling_factor - 1.0) * temp_penalty
+furnace_gas_out = 3000 + load_factor * temp_scaling + fouling_impact
+```
+
+### **3. Temperature-Fouling Physics Requirements**
+
+**Industrial Reality**:
+- **Higher fouling** → **Reduced heat transfer** → **Higher stack temperatures**
+- **Higher fouling** → **Less steam heating** → **Lower steam temperatures**
+- **Load changes** → **Temperature profile shifts** → **Different fouling patterns**
+
+**Current Simulation**:
+- Steam temperature: Always 700°F regardless of fouling (1.0 to 1.005 range)
+- Stack temperature: Minimal 0.6°F increase with 0.005 fouling change
+- Furnace gas outlet: Static calculation unresponsive to conditions
+
+**Correlation Impact**:
+```bash
+# Current (broken):
+fouling_stack_corr = +0.016  # Should be >+0.2
+temperature_variation = 0.6°F  # Should be 20-40°F range
+
+# Required (realistic):
+fouling_stack_corr = +0.35   # Strong positive correlation
+temperature_variation = 30°F  # Meaningful operational range
+```
+
+### Resolution Requirements
+
+**HIGH PRIORITY**:
+1. **Dynamic steam temperature**: Implement load and fouling dependency (680-720°F range)
+2. **Responsive furnace gas outlet**: Calculate based on load, fouling, and combustion conditions
+3. **Strengthen temperature scaling**: Increase impact factors for realistic temperature swings
+
+**Implementation Locations**:
+- Remove hardcoded 700.0°F fallbacks in `annual_boiler_simulator.py`
+- Add dynamic temperature calculation in `_simulate_boiler_operation_fixed_api()`
+- Implement fouling-based temperature penalties in efficiency calculations
+
+**Expected Outcome**:
+- Stack temperature-fouling correlation: >+0.2 (currently +0.016)
+- Steam temperature variability: 680-720°F operational range
+- Temperature-based optimization signals for ML training
 
 ---
 

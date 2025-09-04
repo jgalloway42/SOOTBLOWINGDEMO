@@ -6,12 +6,13 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 ## Key Project Information
 
 ### Current Status
-- **Phase**: Core Physics Fixed - Major Simulation Issues Resolved  
-- **Focus**: Soot blowing optimization for industrial boilers
-- **Dataset**: ❌ **Previous datasets invalid** - generated with backwards physics
-- **Physics**: ✅ **FIXED** - Corrected fouling rates (furnace highest, air heater lowest)
-- **Status**: ✅ **Core simulation physics corrected** - ready to generate realistic dataset
-- **Next Steps**: Generate new dataset with corrected physics, validate results, build optimizer
+- **Phase**: Physics Correlation Analysis - Critical Issues Identified
+- **Focus**: Soot blowing optimization for industrial boilers  
+- **Architecture**: ✅ **WORKING** - Centralized soot blowing logic, boolean detection fixed
+- **Physics**: ❌ **CORRELATION FAILURES** - Time-fouling, efficiency-fouling, temperature-fouling all failing
+- **Dataset**: ✅ **EVENT DETECTION WORKING** - 1,002 cleaning events detected, but physics impact insufficient
+- **Status**: Mixed results - Architecture solid, physics relationships need major strengthening
+- **Next Steps**: Fix fouling rates, impact scaling, and temperature dynamics for proper correlations
 
 ### Main Directories
 ```
@@ -33,51 +34,65 @@ Industrial boiler soot blowing optimization system using physics-based simulatio
 - `boiler_eda_analysis.py` - Comprehensive analysis functions (Windows-compatible)
 - `massachusetts_boiler_annual_20250903_115813.csv` - Latest calibrated dataset (87.2% effectiveness)
 
-### ✅ **MAJOR PROGRESS: Core Physics Issues Resolved (2025-09-03)**
-- **Fouling physics**: ✅ **FIXED** - Corrected fundamental temperature-fouling relationship
-- **Cleaning schedule**: ✅ **FIXED** - Now matches fouling severity (furnace most frequent)
-- **Previous datasets**: ❌ **INVALID** - generated with backwards physics, must regenerate
-- **Remaining issue**: Effectiveness calculation architecture still needs fixing
-- **Status**: Major physics breakthrough - core simulation now realistic
+### ⚠️ **CURRENT STATUS: Mixed Architecture/Physics Results (2025-09-04)**
+- **Boolean Detection**: ✅ **FIXED** - Notebook analysis now properly detects cleaning events (1,002 vs 0 previously)
+- **Centralized Architecture**: ✅ **WORKING** - SootBlowingSimulator unified, fire-side only logic correct
+- **Physics Correlations**: ❌ **FAILING** - All three validation metrics below target ranges
+- **Temperature Issues**: ❌ **STATIC** - Steam temp constant 700°F, furnace gas outlet unresponsive
+- **Fouling Range**: ❌ **TOO NARROW** - Actual 1.000-1.005 vs expected 1.0-1.25 for ML training
+- **Status**: Architecture success, physics impact insufficient for realistic behavior
 
 ## Technical Context
 
-### Recent Major Work
-1. **MAJOR BREAKTHROUGH: Core Physics Fixed** (LATEST - 2025-09-03):
-   - **Fixed**: Fundamental fouling physics completely corrected
-   - **Change**: Furnace now highest fouling rate (0.30%/hr), air heater lowest (0.04%/hr)
-   - **Impact**: Simulation can now generate realistic fouling patterns
-   - **Status**: ✅ **Core physics working correctly** - ready for realistic dataset generation
+### Recent Major Work  
+1. **PHYSICS CORRELATION ANALYSIS** (LATEST - 2025-09-04):
+   - **Discovered**: All three physics validation metrics failing target ranges
+   - **Time-Fouling**: r=-0.001 (target >+0.4) - near zero correlation
+   - **Fouling-Efficiency**: r=+0.018 (target <-0.25) - wrong direction, too weak
+   - **Stack Temp-Fouling**: r=+0.016 (target >+0.2) - insufficient temperature response
+   - **Root Causes**: Conservative fouling rates, weak impact scaling, static temperatures
+   - **Impact**: ❌ **Physics relationships too weak for meaningful ML training**
 
-2. **Previous Calibration Work**:
+2. **BOOLEAN DETECTION SUCCESS** (2025-09-04):
+   - **Fixed**: Notebook analysis using `== True` instead of `== 1` 
+   - **Result**: Now detects 1,002 cleaning events vs 0 previously
+   - **Impact**: ✅ **Analysis framework working, reveals true physics issues**
+
+3. **CENTRALIZED ARCHITECTURE COMPLETED** (2025-09-03):
+   - **Unified**: All soot blowing methods into SootBlowingSimulator
+   - **Physics**: Fire-side only cleaning logic correctly implemented
+   - **Structure**: 90-95% effectiveness framework in place
+   - **Impact**: ✅ **Clean architecture ready for physics improvements**
+
+4. **CONSTANT TEMPERATURE ISSUES IDENTIFIED**:
+   - **Steam Temperature**: Hardcoded 700°F fallbacks eliminating correlations
+   - **Furnace Gas Outlet**: Static calculation unresponsive to fouling levels
+   - **Impact**: ❌ **Temperature-fouling relationships impossible with current code**
+
+5. **Previous Foundation Work**:
    - Fixed output file paths to use project root directories  
-   - Created notebook 2.6 for effectiveness analysis
-   - Generated multiple calibrated datasets with varying parameter ranges
+   - Windows compatibility improvements (Unicode → ASCII)
+   - Comprehensive analysis infrastructure and visualization dashboards
 
-2. **Physics Corrections Applied** (VALIDATED):
-   - Fixed efficiency-fouling correlation (now negative as expected)
-   - Implemented time-based fouling accumulation (time since last cleaning)
-   - Added CEMS stack temperature correlations with fouling
-   - Resolved API compatibility issues
+### Dataset Validation Results (CURRENT - massachusetts_boiler_annual_20250904_140843.csv)
 
-2. **Analysis Infrastructure**:
-   - Comprehensive soot blowing effectiveness analysis
-   - Cleaning schedule optimization algorithms
-   - Industrial-grade visualization dashboards
-   - Refactored code into reusable modules
+**❌ PHYSICS CORRELATIONS - FAILING VALIDATION**:
+- **Time-fouling correlation**: r=-0.001 (target >+0.4) - MAJOR FAILURE
+- **Fouling-efficiency correlation**: r=+0.018 (target <-0.25) - WRONG DIRECTION & WEAK
+- **Stack temp-fouling correlation**: r=+0.016 (target >+0.2) - INSUFFICIENT IMPACT
 
-3. **Windows Compatibility Fixes**:
-   - Replaced Unicode emojis with ASCII-safe alternatives
-   - Fixed AttributeError in outlier detection (simplified for simulated data)
-   - All analysis functions now run without encoding errors
+**✅ OPERATIONAL PARAMETERS - MIXED RESULTS**:
+- **Load factor compliance**: 100% within 60.0%-103.0% range - EXCELLENT
+- **Boolean detection**: 1,002 cleaning events detected - WORKING  
+- **Section coverage**: 7 major boiler sections with cleaning schedules - COMPREHENSIVE
+- **Constant columns**: 3 static parameters (year, final_steam_temp_F, furnace_gas_temp_out_F)
 
-### Dataset Validation Results
-- **Time-fouling correlation**: +0.974 (excellent)
-- **Efficiency-fouling correlation**: -0.664 (excellent) 
-- **Load factor compliance**: 100% within 60-105%
-- **Parameter variation**: Only 3 constant columns
-- **Effectiveness Performance**: 87.2% average (within 80-95% industrial range)
-- **Commercial readiness**: ✅ **READY FOR DEPLOYMENT** with known architectural constraints
+**⚠️ FOULING BEHAVIOR - INSUFFICIENT RANGE**:
+- **Fouling accumulation**: 1.000-1.005 range (expected 1.0-1.25) - TOO NARROW
+- **Physics impact**: Minimal efficiency/temperature effects - REQUIRES STRENGTHENING
+- **Cleaning effectiveness**: Framework working but shows 0.8% due to physics issues
+
+**Commercial Readiness**: ⚠️ **ARCHITECTURE READY, PHYSICS INSUFFICIENT FOR ML TRAINING**
 
 ### Commands to Run
 ```bash

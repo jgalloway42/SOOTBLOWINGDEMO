@@ -4,42 +4,52 @@
 
 Industrial boiler soot blowing optimization system using physics-based simulation and machine learning. Focuses on optimizing cleaning schedules to maximize efficiency while minimizing operational costs.
 
-**Current Status**: ❌ **Early Development Phase** - Critical simulation architecture issues require fixing before proceeding.
+**Current Status**: ⚠️ **Mixed Results** - Architecture working, physics correlations failing validation.
 
-## Current System Status (Updated 2025-09-03)
+## Current System Status (Updated 2025-09-04)
 
-### ⚠️ **Partially Working**
-- **Basic Simulation**: Runs without crashing, generates data files
-- **Analysis Tools**: EDA functions work but analyze broken simulation data
-- **File Structure**: Proper organization and data output paths
-- **Coal Combustion**: Physics calculations appear to work correctly
+### ✅ **Working Components**
+- **Centralized Architecture**: SootBlowingSimulator unified, fire-side only logic correct
+- **Boolean Detection**: Fixed notebook analysis - now detects 1,002 cleaning events
+- **Event Generation**: Section-specific cleaning schedules operating correctly (7 sections)
+- **Data Output**: Proper file structure with comprehensive operational parameters
+- **Analysis Framework**: EDA functions working, correctly identifying physics issues
 
-### ❌ **Critical Issues Identified**
+### ❌ **Critical Physics Issues Identified**
 
-#### Broken Effectiveness Calculation
-- **Issue**: Effectiveness parameters are completely non-functional - don't affect fouling reduction at all
-- **Root Cause**: Architecture assumes `boiler.sections[].apply_cleaning()` objects that don't exist
-- **Impact**: Generated datasets are NOT realistic and cannot be used for optimization
-- **Status**: ❌ **Major architectural fix required**
+#### Physics Correlations Failing Validation
+- **Time-Fouling**: r=-0.001 (target >+0.4) - Near zero correlation, no fouling buildup pattern
+- **Fouling-Efficiency**: r=+0.018 (target <-0.25) - Wrong direction, too weak for ML training
+- **Stack Temp-Fouling**: r=+0.016 (target >+0.2) - Insufficient temperature response
+- **Impact**: ❌ **Physics relationships too weak for meaningful ML optimization**
 
-#### What This Means
-- **No Valid Dataset**: Current simulation outputs are not realistic
-- **No Optimization Possible**: Cannot build optimizer without realistic fouling data
-- **No Demo Ready**: System fundamentally broken for intended purpose
+#### Root Causes Identified  
+- **Fouling Rates**: 0.00004-0.00030/hr too conservative for realistic accumulation
+- **Impact Scaling**: Efficiency (0.25x) and temperature (120°F) factors too weak
+- **Static Temperatures**: Steam temp hardcoded 700°F, furnace gas outlet unresponsive
+- **Fouling Range**: Actual 1.000-1.005 vs expected 1.0-1.25 industrial range
+- **Status**: ❌ **Physics strengthening required before ML training**
 
-### ❌ **NOT Ready - Major Work Required**
-1. **Fix simulation architecture** - Make effectiveness parameters functional
-2. **Generate realistic dataset** - With working fouling/cleaning physics  
-3. **Build optimization model** - For real-time soot blowing recommendations
-4. **Create demo interface** - To show optimization in action
-5. **Validate against industry data** - Ensure realistic behavior
+### ⚠️ **Current Capabilities & Limitations**
+**What Works**:
+- Event detection and cleaning schedule execution
+- Centralized soot blowing architecture with proper fire-side only logic
+- Comprehensive data generation (220 parameters, 8,760 hourly records)
+- Analysis tools correctly identifying the physics limitations
 
-### 🎯 **Project Goal (Not Yet Achieved)**
+**What Needs Fixing**:
+- Fouling accumulation rates (increase 3-5x for realistic buildup)
+- Physics impact scaling (strengthen efficiency/temperature relationships)
+- Dynamic temperature calculations (eliminate static 700°F fallbacks)
+- Fouling range expansion (enable 1.0-1.25 degradation patterns)
+
+### 🎯 **Current Project Status**
 Build a working soot blowing optimization system that can:
-- Generate realistic fouling datasets from physics-based simulation
-- Train ML models to predict fouling buildup
-- Provide real-time optimization recommendations for cleaning schedules
-- Demonstrate measurable efficiency improvements
+- ✅ Generate cleaning event data from centralized simulation
+- ❌ **NEEDS WORK**: Create realistic fouling-performance correlations  
+- ❌ **BLOCKED**: Train ML models (requires stronger physics signals)
+- ❌ **BLOCKED**: Provide optimization recommendations (needs correlation patterns)
+- ⚠️ **PARTIAL**: Demonstrate architecture (events work, physics insufficient)
 
 ## Dataset
 
