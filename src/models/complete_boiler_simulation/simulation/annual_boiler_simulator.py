@@ -34,6 +34,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from core.boiler_system import EnhancedCompleteBoilerSystem
 from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
+from core.fouling_and_soot_blowing import SootProductionModel, SootBlowingSimulator
 from core.thermodynamic_properties import PropertyCalculator
 
 # Set up enhanced logging - use project root
@@ -105,6 +106,10 @@ class AnnualBoilerSimulator:
         
         # Track last cleaning times
         self.last_cleaned = {section: self.start_date for section in self.soot_blowing_schedule.keys()}
+        
+        # EFFECTIVENESS FIX: Track fouling baselines after each cleaning (not just timer reset)
+        # This enables proper 90-95% effectiveness implementation
+        self.fouling_baselines = {section: 1.0 for section in self.soot_blowing_schedule.keys()}
         
         # Initialize enhanced boiler system with CORRECT API parameters
         try:
@@ -499,60 +504,95 @@ class AnnualBoilerSimulator:
         return base_temp + temp_adjustment
     
     def _check_soot_blowing_schedule(self, current_datetime: datetime.datetime) -> Dict:
-        """Check if any sections need soot blowing based on realistic schedule."""
+        """
+        REFACTORED: Use centralized SootBlowingSimulator for schedule checking.
+        
+        This method now delegates to SootBlowingSimulator.check_section_cleaning_schedule
+        to maintain centralized soot blowing logic.
+        """
         soot_blowing_actions = {}
         
         for section_name, interval_hours in self.soot_blowing_schedule.items():
             last_cleaned = self.last_cleaned[section_name]
-            hours_since_cleaned = (current_datetime - last_cleaned).total_seconds() / 3600
             
-            if hours_since_cleaned >= interval_hours:
-                # Time for soot blowing
-                soot_blowing_actions[section_name] = {
-                    'action': True,
-                    'hours_since_last': hours_since_cleaned,
-                    'effectiveness': np.random.uniform(0.88, 0.97),
-                    'segments_cleaned': 'all'
-                }
-                
-                # Update last cleaned date
+            # Use centralized SootBlowingSimulator method
+            action = SootBlowingSimulator.check_section_cleaning_schedule(
+                section_name, last_cleaned, interval_hours, current_datetime
+            )
+            
+            soot_blowing_actions[section_name] = action
+            
+            # Update last cleaned date if cleaning is happening
+            if action['action']:
                 self.last_cleaned[section_name] = current_datetime
-            else:
-                soot_blowing_actions[section_name] = {
-                    'action': False,
-                    'hours_since_last': hours_since_cleaned,
-                    'effectiveness': 0.0,
-                    'segments_cleaned': None
-                }
         
         return soot_blowing_actions
     
     def _apply_soot_blowing_effects(self, soot_blowing_actions: Dict):
-        """Apply soot blowing effects to boiler sections and reset fouling timing."""
+        """
+        REFACTORED: Use centralized SootBlowingSimulator for applying effectiveness.
+        
+        This method now delegates to SootBlowingSimulator.apply_section_soot_blowing_effects
+        to maintain centralized soot blowing logic.
+        """
         
         for section_name, action in soot_blowing_actions.items():
             if action['action']:  # If cleaning is happening
-                try:
-                    # Get the boiler section if it exists
-                    if hasattr(self.boiler, 'sections') and section_name in self.boiler.sections:
-                        section = self.boiler.sections[section_name]
-                        
-                        # Apply cleaning effectiveness
-                        if hasattr(section, 'apply_cleaning'):
-                            section.apply_cleaning(action['effectiveness'])
-                    
-                    # CRITICAL FIX: Ensure fouling timer is reset for this section
-                    # This ensures _generate_fouling_data() uses the correct reset time
-                    if hasattr(self, 'last_cleaned') and section_name in self.last_cleaned:
-                        # Note: last_cleaned is already updated in _check_soot_blowing_schedule
-                        # but we need to ensure it's the current datetime for this cleaning event
-                        logger.debug(f"Applied soot blowing to {section_name}: {action['effectiveness']:.1%} effectiveness")
-                        logger.debug(f"Fouling timer reset for {section_name} at {self.last_cleaned[section_name]}")
-                    else:
-                        logger.warning(f"Could not update fouling timer for {section_name}")
+                # Use centralized SootBlowingSimulator method for fouling calculation
+                current_fouling = SootBlowingSimulator.calculate_current_fouling_factor(
+                    section_name, action['hours_since_last'], self.fouling_baselines
+                )
                 
-                except Exception as e:
-                    logger.debug(f"Could not apply soot blowing to {section_name}: {e}")
+                # Use centralized SootBlowingSimulator method for effectiveness application
+                cleaning_result = SootBlowingSimulator.apply_section_soot_blowing_effects(
+                    section_name, action, current_fouling, self.fouling_baselines
+                )
+                
+                # Log results
+                if cleaning_result['cleaning_applied']:
+                    logger.debug(f"Applied soot blowing to {section_name}: {cleaning_result['effectiveness']:.1%} effectiveness")
+                    logger.debug(f"Fouling: {cleaning_result['original_fouling']:.4f} -> {cleaning_result['new_baseline']:.4f} (removed {cleaning_result['fouling_removed']:.4f})")
+                    logger.debug(f"Fouling timer reset for {section_name} at {self.last_cleaned[section_name]}")
+                else:
+                    if 'error' in cleaning_result:
+                        logger.warning(f"Could not apply soot blowing effectiveness to {section_name}: {cleaning_result['error']}")
+                    else:
+                        logger.debug(f"No soot blowing applied to {section_name}")
+            else:
+                logger.debug(f"No soot blowing scheduled for {section_name}")
+    
+    # DEPRECATED: Moved to SootBlowingSimulator.calculate_current_fouling_factor
+    # TODO: DELETE AFTER TESTING - This functionality has been centralized in SootBlowingSimulator
+    # 
+    # def _get_current_fouling_factor(self, section_name: str, hours_since_cleaning: float) -> float:
+    #     """Calculate current fouling factor before cleaning for effectiveness application."""
+    #     
+    #     # Get section-specific fouling rate
+    #     fouling_rates = {
+    #         'furnace_walls': 0.00030,           # HIGHEST fouling
+    #         'generating_bank': 0.00025,         # High fouling
+    #         'superheater_primary': 0.00020,     # Moderate-high fouling
+    #         'superheater_secondary': 0.00015,   # Moderate fouling
+    #         'economizer_primary': 0.00012,      # Lower fouling
+    #         'economizer_secondary': 0.00008,    # Low fouling
+    #         'air_heater': 0.00004               # LOWEST fouling
+    #     }
+    #     
+    #     base_rate = fouling_rates.get(section_name, 0.00015)  # Default moderate rate
+    #     
+    #     # Start with post-cleaning baseline (not always 1.0 after effectiveness application)
+    #     baseline_fouling = self.fouling_baselines.get(section_name, 1.0)
+    #     
+    #     # Add fouling accumulation since last cleaning
+    #     fouling_accumulation = base_rate * hours_since_cleaning
+    #     
+    #     # Current fouling factor before this cleaning
+    #     current_fouling = baseline_fouling + fouling_accumulation
+    #     
+    #     # Apply realistic industrial bounds
+    #     current_fouling = max(1.0, min(1.25, current_fouling))
+    #     
+    #     return current_fouling
     
     def _generate_coal_combustion_data(self, operating_conditions: Dict) -> Dict:
         """Generate realistic coal combustion data."""
@@ -696,44 +736,15 @@ class AnnualBoilerSimulator:
 
     
     def _generate_soot_blowing_data(self, soot_blowing_actions: Dict) -> Dict:
-        """Generate soot blowing activity data."""
+        """
+        REFACTORED: Use centralized SootBlowingSimulator for data generation.
         
-        # Check if any cleaning is active
-        any_cleaning = any(action.get('action', False) for action in soot_blowing_actions.values())
+        This method now delegates to SootBlowingSimulator.generate_cleaning_activity_data
+        to maintain centralized soot blowing logic.
+        """
         
-        # Count active sections
-        active_sections = sum(1 for action in soot_blowing_actions.values() 
-                            if action.get('action', False))
-        
-        # Calculate cleaning effectiveness
-        if any_cleaning:
-            avg_effectiveness = np.mean([action.get('effectiveness', 0) 
-                                       for action in soot_blowing_actions.values() 
-                                       if action.get('action', False)])
-        else:
-            avg_effectiveness = 0.0
-        
-        return {
-            'soot_blowing_active': any_cleaning,
-            'sections_being_cleaned': active_sections,
-            'avg_cleaning_effectiveness': avg_effectiveness,
-            'furnace_walls_cleaning': soot_blowing_actions.get('furnace_walls', {}).get('action', False),
-            'generating_bank_cleaning': soot_blowing_actions.get('generating_bank', {}).get('action', False),
-            'superheater_primary_cleaning': soot_blowing_actions.get('superheater_primary', {}).get('action', False),
-            'superheater_secondary_cleaning': soot_blowing_actions.get('superheater_secondary', {}).get('action', False),
-            'economizer_primary_cleaning': soot_blowing_actions.get('economizer_primary', {}).get('action', False),
-            'economizer_secondary_cleaning': soot_blowing_actions.get('economizer_secondary', {}).get('action', False),
-            'air_heater_cleaning': soot_blowing_actions.get('air_heater', {}).get('action', False),
-            'steam_consumption_lb_hr': active_sections * 500 if any_cleaning else 0,
-            'cleaning_duration_min': active_sections * 15 if any_cleaning else 0,
-            'hours_since_last_furnace': soot_blowing_actions.get('furnace_walls', {}).get('hours_since_last', 0),
-            'hours_since_last_generating': soot_blowing_actions.get('generating_bank', {}).get('hours_since_last', 0),
-            'hours_since_last_superheater_1': soot_blowing_actions.get('superheater_primary', {}).get('hours_since_last', 0),
-            'hours_since_last_superheater_2': soot_blowing_actions.get('superheater_secondary', {}).get('hours_since_last', 0),
-            'hours_since_last_economizer_1': soot_blowing_actions.get('economizer_primary', {}).get('hours_since_last', 0),
-            'hours_since_last_economizer_2': soot_blowing_actions.get('economizer_secondary', {}).get('hours_since_last', 0),
-            'hours_since_last_air_heater': soot_blowing_actions.get('air_heater', {}).get('hours_since_last', 0)
-        }
+        # Use centralized SootBlowingSimulator method
+        return SootBlowingSimulator.generate_cleaning_activity_data(soot_blowing_actions)
     
     def _generate_fouling_data(self, current_datetime: datetime.datetime) -> Dict:
         """

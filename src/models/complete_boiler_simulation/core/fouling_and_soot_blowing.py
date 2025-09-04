@@ -27,6 +27,7 @@ Version: 5.1 - Realistic Fouling Physics
 """
 
 import numpy as np
+import datetime
 from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple
 
@@ -121,11 +122,13 @@ class FoulingCalculator:
         return gas_fouling, water_fouling
 
 
-class CorrectedSootProductionModel:
-    """Corrected soot production model with realistic deposition patterns."""
+class SootProductionModel:
+    """Unified soot production model with realistic combustion effects AND deposition patterns."""
     
-    def __init__(self):
-        """Initialize with corrected deposition factors."""
+    def __init__(self, combustion_model=None):
+        """Initialize with optional combustion model for realistic soot formation effects."""
+        self.combustion_model = combustion_model
+        self.soot_data = {}
         # Section-specific soot deposition characteristics (CORRECTED)
         self.realistic_deposition_factors = {
             'furnace_walls': {
@@ -172,14 +175,92 @@ class CorrectedSootProductionModel:
             }
         }
     
+    def calculate_soot_production(self, combustion_model=None) -> Dict[str, float]:
+        """
+        UNIFIED: Calculate soot production with combustion condition effects AND deposition patterns.
+        
+        Merges functionality from original SootProductionModel (combustion effects) with 
+        CorrectedSootProductionModel (realistic deposition patterns).
+        """
+        
+        # Use provided combustion model or the one from initialization
+        if combustion_model is not None:
+            self.combustion_model = combustion_model
+            
+        if self.combustion_model is None:
+            # Fallback to default values if no combustion model provided
+            load_factor = 0.85
+            flame_temp = 3000
+            excess_air = 0.20
+            base_soot_rate = 80.0  # Default lb/hr
+        else:
+            # Use real combustion model data for realistic soot formation
+            if not self.combustion_model._calculated:
+                self.combustion_model.calculate()
+            
+            load_factor = self.combustion_model.load_factor
+            flame_temp = self.combustion_model.flame_temp_F
+            excess_air = self.combustion_model._results.get('excess_air_fraction', 0.20)
+            base_soot_rate = self.combustion_model._coal_lb_per_hr * 0.01  # 1% of coal as potential soot
+        
+        # COMBUSTION CONDITION EFFECTS (from original SootProductionModel)
+        # Base soot production factors (realistic range focused)
+        if load_factor < 0.65:
+            # Higher soot at low loads (poor combustion)
+            base_soot_factor = 1.4
+        elif load_factor > 1.0:
+            # Higher soot at high loads (reduced residence time)
+            base_soot_factor = 1.2
+        else:
+            # Optimal soot production range
+            base_soot_factor = 1.0
+        
+        # Temperature effects
+        if flame_temp < 2500:
+            temp_factor = 1.3  # More soot at low temps
+        elif flame_temp > 3000:
+            temp_factor = 1.1  # Some soot increase at very high temps
+        else:
+            temp_factor = 1.0
+        
+        # Excess air effects (CRITICAL for realistic soot formation)
+        if excess_air < 0.15:
+            air_factor = 1.5  # Much more soot with insufficient air (fuel-rich zones)
+        elif excess_air > 0.30:
+            air_factor = 0.8  # Less soot with excess air
+        else:
+            air_factor = 1.0
+        
+        # Calculate total soot production with combustion effects
+        actual_soot_rate = base_soot_rate * base_soot_factor * temp_factor * air_factor
+        
+        # UNIFIED: Use realistic deposition patterns for section distribution
+        self.soot_data = {
+            'total_soot_lb_per_hr': actual_soot_rate,
+            # Section percentages based on physics (same as original)
+            'furnace_soot_pct': 0.45,      # Highest in furnace (formation zone)
+            'superheater_soot_pct': 0.30,  # High in superheater (still hot)
+            'economizer_soot_pct': 0.20,   # Moderate in economizer (cooling)
+            'air_heater_soot_pct': 0.05,   # Lowest in air heater (cold)
+            # Combustion condition tracking
+            'load_factor': load_factor,
+            'flame_temp_F': flame_temp,
+            'excess_air_fraction': excess_air,
+            'base_soot_factor': base_soot_factor,
+            'temp_factor': temp_factor,
+            'air_factor': air_factor,
+            # Deposition factors (enhanced from CorrectedSootProductionModel)
+            'deposition_factors': self.realistic_deposition_factors
+        }
+        
+        return self.soot_data
+    
     def calculate_realistic_section_fouling_rates(self, combustion_model, 
                                                  coal_properties: Dict,
                                                  boiler_system) -> Dict[str, Dict[str, List[float]]]:
-        """Calculate realistic fouling rates with corrected deposition patterns."""
-        # Calculate base soot production (unchanged)
-        from core.coal_combustion_models import SootProductionModel
-        soot_model = SootProductionModel()
-        soot_data = soot_model.calculate_soot_production(combustion_model, coal_properties)
+        """Calculate realistic fouling rates with unified combustion effects and deposition patterns."""
+        # Use the unified soot production calculation
+        soot_data = self.calculate_soot_production(combustion_model)
         
         section_fouling_rates = {}
         
@@ -272,7 +353,7 @@ def demonstrate_corrected_fouling_patterns():
     
     # Initialize corrected models
     corrected_calculator = FoulingCalculator()
-    corrected_soot_model = CorrectedSootProductionModel()
+    corrected_soot_model = SootProductionModel()
     
     # Test different sections with realistic fouling
     sections_test = [
@@ -374,19 +455,24 @@ class SootBlowingSimulator:
                                   base_water_fouling: float, 
                                   cleaning_effectiveness: float = 0.8) -> Dict[str, List[float]]:
         """
-        Create fouling arrays representing freshly cleaned tubes.
+        CORRECTED: Create fouling arrays representing freshly soot-blown tubes.
+        
+        CRITICAL PHYSICS FIX: Only fire-side fouling is reduced by soot blowing.
+        Water-side fouling remains unchanged as it's from water chemistry, not soot.
         
         Args:
             num_segments: Number of segments in the section
             base_gas_fouling: Base gas-side fouling factor
             base_water_fouling: Base water-side fouling factor
-            cleaning_effectiveness: Fraction of fouling removed (0-1)
+            cleaning_effectiveness: Fraction of FIRE-SIDE fouling removed (0-1)
             
         Returns:
             Dict with 'gas' and 'water' fouling arrays
         """
+        # CORRECTED: Only fire-side fouling is reduced by soot blowing
         clean_gas_fouling = base_gas_fouling * (1 - cleaning_effectiveness)
-        clean_water_fouling = base_water_fouling * (1 - cleaning_effectiveness)
+        # PHYSICS FIX: Water-side fouling is NOT affected by soot blowing
+        clean_water_fouling = base_water_fouling  # Unchanged by soot blowing
         
         return {
             'gas': [clean_gas_fouling] * num_segments,
@@ -434,12 +520,15 @@ class SootBlowingSimulator:
                                     blown_segments: List[int],
                                     cleaning_effectiveness: float = 0.85) -> Dict[str, List[float]]:
         """
-        Simulate partial soot blowing affecting only specific segments.
+        CORRECTED: Simulate partial soot blowing affecting only FIRE-SIDE fouling.
+        
+        CRITICAL PHYSICS FIX: Soot blowing only cleans fire-side (gas-side) soot deposits.
+        Water-side fouling is from treated water chemistry and is NOT affected by soot blowing.
         
         Args:
             fouling_array: Current fouling arrays
             blown_segments: List of segment indices to clean
-            cleaning_effectiveness: Fraction of fouling removed from blown segments
+            cleaning_effectiveness: Fraction of fouling removed from blown segments (fire-side only)
             
         Returns:
             Updated fouling arrays after soot blowing
@@ -451,31 +540,238 @@ class SootBlowingSimulator:
         
         for segment_id in blown_segments:
             if 0 <= segment_id < len(new_array['gas']):
+                # CORRECTED: Only clean fire-side (gas-side) fouling with soot blowing
                 new_array['gas'][segment_id] *= (1 - cleaning_effectiveness)
-                new_array['water'][segment_id] *= (1 - cleaning_effectiveness)
+                # PHYSICS FIX: Water-side fouling is NOT affected by soot blowing
+                # new_array['water'][segment_id] *= (1 - cleaning_effectiveness)  # REMOVED
         
         return new_array
     
     @staticmethod
-    def simulate_progressive_fouling(clean_fouling_array: Dict[str, List[float]],
-                                   operating_hours: float,
-                                   fouling_rate_per_hour: float = 0.001) -> Dict[str, List[float]]:
+    def apply_section_soot_blowing_effects(section_name: str, action: Dict, 
+                                         current_fouling_factor: float,
+                                         fouling_baselines: Dict[str, float]) -> Dict:
         """
-        Simulate progressive fouling buildup over time.
+        CENTRALIZED: Apply soot blowing effects with 90-95% effectiveness to reduce fouling factors.
+        
+        Moved from annual_boiler_simulator._apply_soot_blowing_effects to centralize 
+        all soot blowing logic in the SootBlowingSimulator class.
         
         Args:
-            clean_fouling_array: Initial clean fouling arrays
+            section_name: Name of the boiler section being cleaned
+            action: Soot blowing action dict with 'effectiveness', 'action', 'hours_since_last'
+            current_fouling_factor: Current fouling factor before cleaning
+            fouling_baselines: Dict of post-cleaning fouling baselines to update
+            
+        Returns:
+            Dict with cleaning results and updated baseline
+        """
+        if not action['action']:  # If no cleaning is happening
+            return {
+                'cleaning_applied': False,
+                'new_baseline': fouling_baselines.get(section_name, 1.0),
+                'fouling_removed': 0.0,
+                'effectiveness': 0.0
+            }
+        
+        try:
+            effectiveness = action['effectiveness']  # 90-95% target range
+            
+            # CORRECTED PHYSICS: Apply effectiveness only to fire-side fouling above baseline
+            fouling_above_baseline = current_fouling_factor - 1.0  # Amount above clean condition
+            fouling_removed = fouling_above_baseline * effectiveness  # 90-95% removed
+            new_baseline = current_fouling_factor - fouling_removed  # Remaining fouling after cleaning
+            
+            # Ensure realistic bounds (never below 1.0, max reduction keeps some residual fouling)
+            new_baseline = max(1.0, min(new_baseline, current_fouling_factor * 0.95))
+            
+            # Update the fouling baseline for this section
+            fouling_baselines[section_name] = new_baseline
+            
+            return {
+                'cleaning_applied': True,
+                'new_baseline': new_baseline,
+                'fouling_removed': fouling_removed,
+                'effectiveness': effectiveness,
+                'original_fouling': current_fouling_factor
+            }
+            
+        except Exception as e:
+            # Fallback to timer-only reset if effectiveness calculation fails
+            fouling_baselines[section_name] = 1.0
+            return {
+                'cleaning_applied': False,
+                'error': str(e),
+                'new_baseline': 1.0,
+                'fouling_removed': 0.0,
+                'effectiveness': 0.0
+            }
+    
+    @staticmethod
+    def check_section_cleaning_schedule(section_name: str, last_cleaned: datetime.datetime, 
+                                      interval_hours: int, current_datetime: datetime.datetime) -> Dict:
+        """
+        CENTRALIZED: Check if a section needs soot blowing based on schedule.
+        
+        Moved from annual_boiler_simulator._check_soot_blowing_schedule to centralize
+        all soot blowing logic in the SootBlowingSimulator class.
+        
+        Args:
+            section_name: Name of the boiler section
+            last_cleaned: Datetime when section was last cleaned
+            interval_hours: Cleaning interval for this section
+            current_datetime: Current simulation time
+            
+        Returns:
+            Dict with soot blowing action details
+        """
+        import numpy as np
+        
+        hours_since_cleaned = (current_datetime - last_cleaned).total_seconds() / 3600
+        
+        if hours_since_cleaned >= interval_hours:
+            # Time for soot blowing
+            return {
+                'action': True,
+                'hours_since_last': hours_since_cleaned,
+                'effectiveness': np.random.uniform(0.90, 0.95),  # TARGET: 90-95% effectiveness
+                'segments_cleaned': 'all'
+            }
+        else:
+            # No cleaning needed yet
+            return {
+                'action': False,
+                'hours_since_last': hours_since_cleaned,
+                'effectiveness': 0.0,
+                'segments_cleaned': None
+            }
+    
+    @staticmethod
+    def calculate_current_fouling_factor(section_name: str, hours_since_cleaning: float,
+                                       fouling_baselines: Dict[str, float]) -> float:
+        """
+        CENTRALIZED: Calculate current fouling factor before cleaning for effectiveness application.
+        
+        Moved from annual_boiler_simulator._get_current_fouling_factor to centralize
+        all soot blowing logic in the SootBlowingSimulator class.
+        
+        Args:
+            section_name: Name of the boiler section
+            hours_since_cleaning: Hours since last soot blowing
+            fouling_baselines: Dict of post-cleaning fouling baselines
+            
+        Returns:
+            Current fouling factor before cleaning
+        """
+        
+        # Get section-specific fouling rate
+        fouling_rates = {
+            'furnace_walls': 0.00030,           # HIGHEST fouling
+            'generating_bank': 0.00025,         # High fouling
+            'superheater_primary': 0.00020,     # Moderate-high fouling
+            'superheater_secondary': 0.00015,   # Moderate fouling
+            'economizer_primary': 0.00012,      # Lower fouling
+            'economizer_secondary': 0.00008,    # Low fouling
+            'air_heater': 0.00004               # LOWEST fouling
+        }
+        
+        base_rate = fouling_rates.get(section_name, 0.00015)  # Default moderate rate
+        
+        # Start with post-cleaning baseline (not always 1.0 after effectiveness application)
+        baseline_fouling = fouling_baselines.get(section_name, 1.0)
+        
+        # Add fouling accumulation since last cleaning
+        fouling_accumulation = base_rate * hours_since_cleaning
+        
+        # Current fouling factor before this cleaning
+        current_fouling = baseline_fouling + fouling_accumulation
+        
+        # Apply realistic industrial bounds
+        current_fouling = max(1.0, min(1.25, current_fouling))
+        
+        return current_fouling
+    
+    @staticmethod
+    def generate_cleaning_activity_data(soot_blowing_actions: Dict[str, Dict]) -> Dict:
+        """
+        CENTRALIZED: Generate soot blowing activity data for output.
+        
+        Moved from annual_boiler_simulator._generate_soot_blowing_data to centralize
+        all soot blowing logic in the SootBlowingSimulator class.
+        
+        Args:
+            soot_blowing_actions: Dict of section cleaning actions
+            
+        Returns:
+            Dict with soot blowing activity data for output
+        """
+        import numpy as np
+        
+        # Check if any cleaning is active
+        any_cleaning = any(action.get('action', False) for action in soot_blowing_actions.values())
+        
+        # Count active sections
+        active_sections = sum(1 for action in soot_blowing_actions.values() 
+                            if action.get('action', False))
+        
+        # Calculate cleaning effectiveness
+        if any_cleaning:
+            avg_effectiveness = np.mean([action.get('effectiveness', 0) 
+                                       for action in soot_blowing_actions.values() 
+                                       if action.get('action', False)])
+        else:
+            avg_effectiveness = 0.0
+        
+        return {
+            'soot_blowing_active': any_cleaning,
+            'sections_being_cleaned': active_sections,
+            'avg_cleaning_effectiveness': avg_effectiveness,
+            'furnace_walls_cleaning': soot_blowing_actions.get('furnace_walls', {}).get('action', False),
+            'generating_bank_cleaning': soot_blowing_actions.get('generating_bank', {}).get('action', False),
+            'superheater_primary_cleaning': soot_blowing_actions.get('superheater_primary', {}).get('action', False),
+            'superheater_secondary_cleaning': soot_blowing_actions.get('superheater_secondary', {}).get('action', False),
+            'economizer_primary_cleaning': soot_blowing_actions.get('economizer_primary', {}).get('action', False),
+            'economizer_secondary_cleaning': soot_blowing_actions.get('economizer_secondary', {}).get('action', False),
+            'air_heater_cleaning': soot_blowing_actions.get('air_heater', {}).get('action', False),
+            'steam_consumption_lb_hr': active_sections * 500 if any_cleaning else 0,
+            'cleaning_duration_min': active_sections * 15 if any_cleaning else 0,
+            'hours_since_last_furnace': soot_blowing_actions.get('furnace_walls', {}).get('hours_since_last', 0),
+            'hours_since_last_generating': soot_blowing_actions.get('generating_bank', {}).get('hours_since_last', 0),
+            'hours_since_last_superheater_1': soot_blowing_actions.get('superheater_primary', {}).get('hours_since_last', 0),
+            'hours_since_last_superheater_2': soot_blowing_actions.get('superheater_secondary', {}).get('hours_since_last', 0),
+            'hours_since_last_economizer_1': soot_blowing_actions.get('economizer_primary', {}).get('hours_since_last', 0),
+            'hours_since_last_economizer_2': soot_blowing_actions.get('economizer_secondary', {}).get('hours_since_last', 0),
+            'hours_since_last_air_heater': soot_blowing_actions.get('air_heater', {}).get('hours_since_last', 0)
+        }
+    
+    @staticmethod
+    def simulate_progressive_fouling(clean_fouling_array: Dict[str, List[float]],
+                                   operating_hours: float,
+                                   gas_fouling_rate_per_hour: float = 0.001,
+                                   water_fouling_rate_per_hour: float = 0.00005) -> Dict[str, List[float]]:
+        """
+        CORRECTED: Simulate progressive fouling buildup with realistic rates for each side.
+        
+        CRITICAL PHYSICS FIX: Fire-side and water-side foul at very different rates:
+        - Fire-side: Fast soot accumulation (0.001/hr typical)
+        - Water-side: Very slow chemical fouling from treated water (0.00005/hr typical)
+        
+        Args:
+            clean_fouling_array: Initial fouling arrays
             operating_hours: Hours of operation since last cleaning
-            fouling_rate_per_hour: Fouling accumulation rate per hour
+            gas_fouling_rate_per_hour: Fire-side soot accumulation rate per hour
+            water_fouling_rate_per_hour: Water-side chemical fouling rate per hour (much slower)
             
         Returns:
             Updated fouling arrays after fouling buildup
         """
-        fouling_multiplier = 1 + fouling_rate_per_hour * operating_hours
+        # CORRECTED: Different fouling rates for fire-side vs water-side
+        gas_fouling_multiplier = 1 + gas_fouling_rate_per_hour * operating_hours
+        water_fouling_multiplier = 1 + water_fouling_rate_per_hour * operating_hours  # Much slower
         
         return {
-            'gas': [f * fouling_multiplier for f in clean_fouling_array['gas']],
-            'water': [f * fouling_multiplier for f in clean_fouling_array['water']]
+            'gas': [f * gas_fouling_multiplier for f in clean_fouling_array['gas']],
+            'water': [f * water_fouling_multiplier for f in clean_fouling_array['water']]
         }
     
     @staticmethod
@@ -695,22 +991,35 @@ class BoilerSection:
         }
     
     def apply_soot_blowing(self, segment_list: List[int], effectiveness: float = 0.8):
-        """Apply soot blowing to specified segments."""
+        """
+        CORRECTED: Apply soot blowing to specified segments - FIRE-SIDE ONLY.
+        
+        CRITICAL PHYSICS FIX: Soot blowing only removes fire-side soot deposits.
+        Water-side fouling is from treated water chemistry and requires chemical cleaning.
+        """
         for segment_id in segment_list:
             if 0 <= segment_id < self.num_segments:
-                # Reduce fouling by effectiveness amount
+                # CORRECTED: Only reduce fire-side (gas-side) fouling with soot blowing
                 self.gas_fouling_array[segment_id] *= (1 - effectiveness)
-                self.water_fouling_array[segment_id] *= (1 - effectiveness)
+                # PHYSICS FIX: Water-side fouling is NOT affected by soot blowing
+                # self.water_fouling_array[segment_id] *= (1 - effectiveness)  # REMOVED
                 self.hours_since_cleaning[segment_id] = 0.0
     
-    def simulate_fouling_buildup(self, hours: float, fouling_rate_per_hour: float = 0.001):
-        """Simulate fouling buildup over time."""
+    def simulate_fouling_buildup(self, hours: float, gas_fouling_rate_per_hour: float = 0.001, water_fouling_rate_per_hour: float = 0.00005):
+        """
+        CORRECTED: Simulate fouling buildup over time with realistic rates.
+        
+        CRITICAL PHYSICS FIX: Fire-side and water-side foul at very different rates:
+        - Fire-side: Fast soot accumulation
+        - Water-side: Very slow chemical fouling from treated water (20x slower)
+        """
         for i in range(self.num_segments):
             self.hours_since_cleaning[i] += hours
-            # Gradual fouling increase
-            buildup = fouling_rate_per_hour * hours
-            self.gas_fouling_array[i] += buildup
-            self.water_fouling_array[i] += buildup * 0.5  # Water side builds up slower
+            # CORRECTED: Different fouling rates for each side
+            gas_buildup = gas_fouling_rate_per_hour * hours
+            water_buildup = water_fouling_rate_per_hour * hours  # Much slower rate
+            self.gas_fouling_array[i] += gas_buildup
+            self.water_fouling_array[i] += water_buildup
     
     def get_section_summary(self) -> Dict:
         """Get section performance summary."""
