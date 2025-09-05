@@ -628,22 +628,6 @@ class EnhancedCompleteBoilerSystem:
             specific_energy=1188.0  # Typical value
         )
 
-# Legacy support functions and classes for compatibility
-
-class BoilerSystem:
-    """Legacy BoilerSystem class for backward compatibility."""
-    
-    def __init__(self, *args, **kwargs):
-        """Initialize as wrapper around EnhancedCompleteBoilerSystem."""
-        self.enhanced_system = EnhancedCompleteBoilerSystem(*args, **kwargs)
-    
-    def __getattr__(self, name):
-        """Delegate all attributes to enhanced system."""
-        return getattr(self.enhanced_system, name)
-
-class CompleteBoilerSystem(EnhancedCompleteBoilerSystem):
-    """Legacy CompleteBoilerSystem class for backward compatibility."""
-    pass
 
 def test_105_load_optimization():
     """Test the 105% load optimization specifically."""
