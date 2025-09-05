@@ -32,13 +32,15 @@ import os
 
 # Import enhanced modules with IAPWS
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from generic.project_paths import get_project_root
 from core.boiler_system import EnhancedCompleteBoilerSystem
 from core.coal_combustion_models import CoalCombustionModel, CombustionFoulingIntegrator
 from core.fouling_and_soot_blowing import SootProductionModel, SootBlowingSimulator
 from core.thermodynamic_properties import PropertyCalculator
 
 # Set up enhanced logging - use project root
-project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
+project_root = get_project_root()
 log_dir = project_root / "logs" / "simulation"
 log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -561,38 +563,6 @@ class AnnualBoilerSimulator:
             else:
                 logger.debug(f"No soot blowing scheduled for {section_name}")
     
-    # DEPRECATED: Moved to SootBlowingSimulator.calculate_current_fouling_factor
-    # TODO: DELETE AFTER TESTING - This functionality has been centralized in SootBlowingSimulator
-    # 
-    # def _get_current_fouling_factor(self, section_name: str, hours_since_cleaning: float) -> float:
-    #     """Calculate current fouling factor before cleaning for effectiveness application."""
-    #     
-    #     # Get section-specific fouling rate
-    #     fouling_rates = {
-    #         'furnace_walls': 0.00030,           # HIGHEST fouling
-    #         'generating_bank': 0.00025,         # High fouling
-    #         'superheater_primary': 0.00020,     # Moderate-high fouling
-    #         'superheater_secondary': 0.00015,   # Moderate fouling
-    #         'economizer_primary': 0.00012,      # Lower fouling
-    #         'economizer_secondary': 0.00008,    # Low fouling
-    #         'air_heater': 0.00004               # LOWEST fouling
-    #     }
-    #     
-    #     base_rate = fouling_rates.get(section_name, 0.00015)  # Default moderate rate
-    #     
-    #     # Start with post-cleaning baseline (not always 1.0 after effectiveness application)
-    #     baseline_fouling = self.fouling_baselines.get(section_name, 1.0)
-    #     
-    #     # Add fouling accumulation since last cleaning
-    #     fouling_accumulation = base_rate * hours_since_cleaning
-    #     
-    #     # Current fouling factor before this cleaning
-    #     current_fouling = baseline_fouling + fouling_accumulation
-    #     
-    #     # Apply realistic industrial bounds
-    #     current_fouling = max(1.0, min(1.25, current_fouling))
-    #     
-    #     return current_fouling
     
     def _generate_coal_combustion_data(self, operating_conditions: Dict) -> Dict:
         """Generate realistic coal combustion data."""

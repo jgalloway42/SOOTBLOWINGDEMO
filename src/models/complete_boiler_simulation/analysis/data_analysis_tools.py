@@ -29,7 +29,11 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 # Calculate project root and create output directories
-project_root = Path(__file__).parent.parent.parent.parent.parent
+import sys
+sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent / "src"))
+from generic.project_paths import get_project_root
+
+project_root = get_project_root()
 output_dir = project_root / "outputs" / "analysis"
 output_dir.mkdir(parents=True, exist_ok=True)
 

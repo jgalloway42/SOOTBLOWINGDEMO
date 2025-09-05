@@ -26,6 +26,8 @@ import pandas as pd
 
 # Add parent directory to path for module imports
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+from generic.project_paths import get_project_root
 import numpy as np
 import logging
 from datetime import datetime
@@ -33,7 +35,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
 # Set up comprehensive logging for debug script - use project root
-project_root = Path(__file__).parent.parent.parent.parent.parent.parent.parent
+project_root = get_project_root()
 log_dir = project_root / "logs" / "debug"
 log_dir.mkdir(parents=True, exist_ok=True)
 
