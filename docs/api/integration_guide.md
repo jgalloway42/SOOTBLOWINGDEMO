@@ -15,9 +15,18 @@ AnnualBoilerSimulator
 ├── EnhancedCompleteBoilerSystem (core boiler)
 │   ├── PropertyCalculator (IAPWS steam properties)
 │   ├── HeatTransferCalculator (component heat transfer)
+│   ├── EnhancedBoilerTubeSection[] (enhanced tube sections)
 │   └── BoilerSection[] (individual sections)
 ├── CoalCombustionModel (combustion calculations)  
-└── CombustionFoulingIntegrator (fouling integration)
+├── CombustionFoulingIntegrator (fouling integration)
+├── SootProductionModel (soot generation)
+├── SootBlowingSimulator (cleaning simulation)
+├── FoulingCalculator (fouling progression)
+└── Analysis Components
+    ├── BoilerDataAnalyzer (data analysis)
+    ├── SystemAnalyzer (system analysis)  
+    ├── Visualizer (plotting and visualization)
+    └── MLDatasetGenerator (ML feature engineering)
 ```
 
 ### Data Flow Pattern
@@ -25,7 +34,10 @@ AnnualBoilerSimulator
 2. **Boiler System** calculates performance using conditions
 3. **Property Calculator** provides thermodynamic properties
 4. **Combustion Model** calculates emissions and efficiency
-5. **Results Integration** combines all outputs into dataset
+5. **Fouling Models** track fouling progression and cleaning
+6. **Results Integration** combines all outputs into dataset
+7. **Analysis Tools** process data for insights and ML features
+8. **Visualization** creates plots and dashboards
 
 ---
 

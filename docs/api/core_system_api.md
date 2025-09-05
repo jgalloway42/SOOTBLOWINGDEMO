@@ -217,6 +217,159 @@ Applies soot blowing to specified segments.
 
 ---
 
+## CombustionFoulingIntegrator
+
+**File:** `src/models/complete_boiler_simulation/core/coal_combustion_models.py`
+
+### Constructor
+```python
+CombustionFoulingIntegrator()
+```
+No parameters required. Provides integration between combustion modeling and fouling simulation.
+
+### Key Methods
+```python
+integrate_combustion_fouling(
+    combustion_model: CoalCombustionModel,
+    fouling_calculator: FoulingCalculator,
+    operating_hours: float
+) -> Dict
+```
+
+**Parameters:**
+- `combustion_model`: CoalCombustionModel instance
+- `fouling_calculator`: FoulingCalculator instance  
+- `operating_hours`: Operating time in hours
+
+**Returns:** Dictionary with integrated fouling and combustion results.
+
+---
+
+## SootProductionModel
+
+**File:** `src/models/complete_boiler_simulation/core/fouling_and_soot_blowing.py`
+
+### Constructor
+```python
+SootProductionModel(
+    base_rate: float = 0.1,
+    temperature_dependence: float = 0.002,
+    load_dependence: float = 0.5
+)
+```
+
+**Parameters:**
+- `base_rate` (float): Base soot production rate
+- `temperature_dependence` (float): Temperature sensitivity factor
+- `load_dependence` (float): Load dependency factor
+
+### Key Methods
+```python
+calculate_production_rate(
+    gas_temperature: float,
+    load_factor: float,
+    coal_properties: Dict
+) -> float
+```
+
+---
+
+## SootBlowingSimulator
+
+**File:** `src/models/complete_boiler_simulation/core/fouling_and_soot_blowing.py`
+
+### Constructor
+```python
+SootBlowingSimulator(
+    sections: List[BoilerSection],
+    effectiveness_range: Tuple[float, float] = (0.8, 0.95)
+)
+```
+
+**Parameters:**
+- `sections`: List of BoilerSection objects
+- `effectiveness_range`: Tuple of (min, max) effectiveness values
+
+### Key Methods
+```python
+simulate_cleaning_cycle(
+    section_name: str,
+    effectiveness: float = None
+) -> Dict
+```
+
+**Parameters:**
+- `section_name` (str): Name of section to clean
+- `effectiveness` (float, optional): Cleaning effectiveness (0.0-1.0)
+
+**Returns:** Dictionary with cleaning results and updated fouling factors.
+
+---
+
+## FoulingCalculator
+
+**File:** `src/models/complete_boiler_simulation/core/fouling_and_soot_blowing.py`
+
+### Constructor
+```python
+FoulingCalculator(
+    base_fouling_rate: float = 0.001,
+    temperature_coefficient: float = 0.0015
+)
+```
+
+**Parameters:**
+- `base_fouling_rate` (float): Base fouling accumulation rate
+- `temperature_coefficient` (float): Temperature dependency coefficient
+
+### Key Methods
+```python
+calculate_fouling_factor(
+    gas_temperature: float,
+    operating_time: float,
+    coal_properties: Dict
+) -> float
+```
+
+---
+
+## EnhancedBoilerTubeSection
+
+**File:** `src/models/complete_boiler_simulation/core/heat_transfer_calculations.py`
+
+### Constructor
+```python
+EnhancedBoilerTubeSection(
+    name: str,
+    tube_count: int,
+    tube_od: float,
+    tube_id: float,
+    tube_length: float,
+    pitch_ratio: float = 1.5
+)
+```
+
+**Parameters:**
+- `name` (str): Section identifier
+- `tube_count` (int): Number of tubes
+- `tube_od` (float): Tube outer diameter in inches
+- `tube_id` (float): Tube inner diameter in inches
+- `tube_length` (float): Tube length in feet
+- `pitch_ratio` (float): Tube pitch ratio (default: 1.5)
+
+### Key Methods
+```python
+calculate_heat_transfer(
+    gas_props: GasProperties,
+    water_props: SteamProperties,
+    gas_flow: float,
+    water_flow: float,
+    fouling_factors: Dict[str, float] = None
+) -> SegmentResult
+```
+
+---
+
 # ARCHITECTURAL LIMITATIONS DISCOVERED (2025-09-03)
 
 ## ⚠️ Critical Issue: Soot Blowing Effectiveness Interface

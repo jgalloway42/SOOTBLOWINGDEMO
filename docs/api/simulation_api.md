@@ -176,6 +176,76 @@ def main():
 
 ---
 
+## MLDatasetGenerator
+
+**File:** `src/models/complete_boiler_simulation/simulation/ml_dataset_generator.py`
+
+### Purpose
+Generates machine learning ready datasets from annual boiler simulation data with comprehensive feature engineering and labeling for optimization algorithms.
+
+### Constructor
+```python
+MLDatasetGenerator(annual_data: pd.DataFrame)
+```
+
+**Parameters:**
+- `annual_data` (pd.DataFrame): Raw annual simulation data from AnnualBoilerSimulator
+
+### Key Methods
+
+```python
+generate_ml_dataset(
+    target_variable: str = "system_efficiency",
+    feature_engineering: bool = True,
+    include_lagged_features: bool = True,
+    lag_periods: List[int] = [1, 2, 4, 8]
+) -> pd.DataFrame
+```
+
+**Parameters:**
+- `target_variable` (str): Target variable for ML models
+- `feature_engineering` (bool): Apply advanced feature engineering
+- `include_lagged_features` (bool): Include time-lagged features
+- `lag_periods` (List[int]): Lag periods in hours for feature creation
+
+**Returns:** ML-ready DataFrame with engineered features and targets
+
+```python
+create_optimization_labels(
+    efficiency_threshold: float = 0.85,
+    fouling_threshold: float = 2.0
+) -> pd.DataFrame
+```
+
+**Purpose:** Create optimization labels for supervised learning
+**Returns:** DataFrame with classification and regression targets
+
+### Usage Pattern
+```python
+from simulation.ml_dataset_generator import MLDatasetGenerator
+
+# Load annual simulation data
+annual_data = pd.read_csv("massachusetts_boiler_annual_2024.csv")
+
+# Create ML dataset generator
+ml_gen = MLDatasetGenerator(annual_data)
+
+# Generate ML-ready dataset with advanced features
+ml_dataset = ml_gen.generate_ml_dataset(
+    target_variable="system_efficiency",
+    feature_engineering=True,
+    include_lagged_features=True
+)
+
+# Create optimization labels
+optimization_labels = ml_gen.create_optimization_labels(
+    efficiency_threshold=0.87,
+    fouling_threshold=1.8
+)
+```
+
+---
+
 # ✅ CRITICAL API FIXES - RESOLVED
 
 ## ✅ FIXED: AnnualBoilerSimulator.generate_annual_data()
